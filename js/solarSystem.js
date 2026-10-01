@@ -221,14 +221,16 @@ export class SolarSystemEngine {
 
       if (data.id === 'sun') {
         // --- NAP ---
+        const sunRoot = new THREE.Group();
+        sunRoot.userData = { data, isPlanet: true };
+
         const sunGeo = new THREE.SphereGeometry(data.size3D, 64, 64);
         const sunMat = new THREE.MeshBasicMaterial({
           map: texture,
           color: 0xffffff
         });
         const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-        sunMesh.userData = { data, isPlanet: true };
-        this.scene.add(sunMesh);
+        sunRoot.add(sunMesh);
 
         // Nap korona / ragyogás (halo effekt)
         const coronaGeo = new THREE.SphereGeometry(data.size3D * 1.25, 32, 32);
@@ -256,15 +258,28 @@ export class SolarSystemEngine {
           transparent: true
         });
         const coronaMesh = new THREE.Mesh(coronaGeo, coronaMat);
-        sunMesh.add(coronaMesh);
+        sunRoot.add(coronaMesh);
+
+        // 3D Belső metszet modell a Naphoz
+        let cutawayGroup = null;
+        if (data.internalStructure) {
+          cutawayGroup = this.buildCutawayMesh(data, data.size3D, texture);
+          sunRoot.add(cutawayGroup);
+        }
+
+        this.scene.add(sunRoot);
 
         this.planets.push({
           data,
-          mesh: sunMesh,
+          mesh: sunRoot,
+          normalMesh: sunMesh,
+          coronaMesh: coronaMesh,
+          cutawayGroup: cutawayGroup,
+          isCutaway: false,
           pivot: null,
           angle: 0
         });
-        this.planetMeshes.push(sunMesh);
+        this.planetMeshes.push(sunRoot);
 
       } else {
         // --- BOLYGÓK ---
@@ -289,7 +304,10 @@ export class SolarSystemEngine {
         this.scene.add(orbitLine);
         this.orbitLines.push(orbitLine);
 
-        // 2. Bolygó test
+        // 2. Bolygó test (Gyökér csoport)
+        const planetRoot = new THREE.Group();
+        planetRoot.userData = { data, isPlanet: true };
+
         const planetGeo = new THREE.SphereGeometry(data.size3D, 48, 48);
         const planetMat = new THREE.MeshStandardMaterial({
           map: texture,
@@ -297,11 +315,18 @@ export class SolarSystemEngine {
           metalness: 0.1
         });
         const planetMesh = new THREE.Mesh(planetGeo, planetMat);
-        planetMesh.userData = { data, isPlanet: true };
+        planetRoot.add(planetMesh);
+
+        // 3D Belső metszet modell (pl. Föld esetén)
+        let cutawayGroup = null;
+        if (data.internalStructure) {
+          cutawayGroup = this.buildCutawayMesh(data, data.size3D, texture);
+          planetRoot.add(cutawayGroup);
+        }
 
         // Véletlenszerű kezdőpozíció a pályán, hogy ne egy vonalban álljanak
         const startAngle = Math.random() * Math.PI * 2;
-        planetMesh.position.set(
+        planetRoot.position.set(
           Math.cos(startAngle) * data.orbitRadius3D,
           0,
           Math.sin(startAngle) * data.orbitRadius3D
@@ -309,13 +334,13 @@ export class SolarSystemEngine {
 
         // Tengelyferdeség (döntés)
         if (data.id === 'uranus') {
-          planetMesh.rotation.z = THREE.MathUtils.degToRad(97.8);
+          planetRoot.rotation.z = THREE.MathUtils.degToRad(97.8);
         } else if (data.id === 'earth') {
-          planetMesh.rotation.z = THREE.MathUtils.degToRad(23.4);
+          planetRoot.rotation.z = THREE.MathUtils.degToRad(23.4);
         } else if (data.id === 'saturn') {
-          planetMesh.rotation.z = THREE.MathUtils.degToRad(26.7);
+          planetRoot.rotation.z = THREE.MathUtils.degToRad(26.7);
         } else if (data.id === 'mars') {
-          planetMesh.rotation.z = THREE.MathUtils.degToRad(25.2);
+          planetRoot.rotation.z = THREE.MathUtils.degToRad(25.2);
         }
 
         // Szaturnusz gyűrű hozzáadása
@@ -324,7 +349,6 @@ export class SolarSystemEngine {
           const ringTexture = new THREE.CanvasTexture(ringTextureCanvas);
 
           const ringGeo = new THREE.RingGeometry(data.ringInnerRadius, data.ringOuterRadius, 64);
-          // RingGeometry normálisan XY síkon van, fordítsuk XZ síkra
           ringGeo.rotateX(Math.PI / 2);
 
           const ringMat = new THREE.MeshStandardMaterial({
@@ -336,7 +360,7 @@ export class SolarSystemEngine {
             metalness: 0.1
           });
           const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-          planetMesh.add(ringMesh);
+          planetRoot.add(ringMesh);
         }
 
         // Föld körül keringő Hold
@@ -348,16 +372,19 @@ export class SolarSystemEngine {
           });
           const moonMesh = new THREE.Mesh(moonGeo, moonMat);
           moonMesh.position.set(5.5, 0, 0);
-          planetMesh.add(moonMesh);
-          planetMesh.userData.moon = moonMesh;
+          planetRoot.add(moonMesh);
+          planetRoot.userData.moon = moonMesh;
         }
 
-        this.scene.add(planetMesh);
-        this.planetMeshes.push(planetMesh);
+        this.scene.add(planetRoot);
+        this.planetMeshes.push(planetRoot);
 
         this.planets.push({
           data,
-          mesh: planetMesh,
+          mesh: planetRoot,
+          normalMesh: planetMesh,
+          cutawayGroup: cutawayGroup,
+          isCutaway: false,
           angle: startAngle
         });
       }
@@ -499,6 +526,173 @@ export class SolarSystemEngine {
     if (this.onPlanetSelect) {
       this.onPlanetSelect(null);
     }
+  }
+
+  /**
+   * 3D Belső rétegmetszet (Cutaway) modell felépítése a Földhöz és a Naphoz
+   */
+  buildCutawayMesh(data, size3D, texture) {
+    const cutawayGroup = new THREE.Group();
+    cutawayGroup.name = `cutaway_${data.id}`;
+    cutawayGroup.visible = false;
+
+    const isSun = (data.id === 'sun');
+    const layers = data.internalStructure ? data.internalStructure.layers : [];
+
+    // 1. Külső 3/4 gömbhéj (270 fokos ív, 90 fokos nyitással a belső rétegekhez)
+    const outerGeo = new THREE.SphereGeometry(size3D, 48, 48, 0, Math.PI * 1.5, 0, Math.PI);
+    let outerMat;
+    if (isSun) {
+      outerMat = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide
+      });
+    } else {
+      outerMat = new THREE.MeshStandardMaterial({
+        map: texture,
+        roughness: 0.8,
+        metalness: 0.1,
+        side: THREE.DoubleSide
+      });
+    }
+    const outerShell = new THREE.Mesh(outerGeo, outerMat);
+    cutawayGroup.add(outerShell);
+
+    // 2. Két sík keresztmetszeti fal generálása
+    const sliceCanvas = this.generateSliceCanvas(layers, isSun);
+    const sliceTexture = new THREE.CanvasTexture(sliceCanvas);
+    sliceTexture.wrapS = THREE.ClampToEdgeWrapping;
+    sliceTexture.wrapT = THREE.ClampToEdgeWrapping;
+
+    // Félkör a nyitás két falának lefedéséhez (-PI/2 -től +PI/2 -ig, átmérő az Y tengelyen)
+    const sliceGeo = new THREE.CircleGeometry(size3D, 64, -Math.PI / 2, Math.PI);
+    const sliceMat = isSun
+      ? new THREE.MeshBasicMaterial({ map: sliceTexture, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ map: sliceTexture, roughness: 0.5, metalness: 0.1, side: THREE.DoubleSide });
+
+    // 1. Félkör a Z = 0 síkban, X >= 0
+    const slice1 = new THREE.Mesh(sliceGeo, sliceMat);
+    cutawayGroup.add(slice1);
+
+    // 2. Félkör elforgatva a Z <= 0 síkba (X = 0)
+    const slice2 = new THREE.Mesh(sliceGeo, sliceMat);
+    slice2.rotation.y = Math.PI * 1.5;
+    cutawayGroup.add(slice2);
+
+    // 3. Koncentrikus belső 3/4 gömbhéjak és központi mag
+    layers.forEach((layer, idx) => {
+      if (layer.radiusRatio >= 1.0) return;
+      const r = size3D * layer.radiusRatio;
+      if (r <= 0.05) return;
+
+      if (idx === layers.length - 1) {
+        // Legbelső mag - teljes 3D ragyogó gömb
+        const coreGeo = new THREE.SphereGeometry(r, 32, 32);
+        let coreMat;
+        if (isSun) {
+          coreMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff
+          });
+        } else {
+          coreMat = new THREE.MeshStandardMaterial({
+            color: 0xfffde7,
+            emissive: 0xffecb3,
+            emissiveIntensity: 0.6,
+            roughness: 0.3,
+            metalness: 0.7
+          });
+        }
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        cutawayGroup.add(coreMesh);
+      } else {
+        // Közbenső rétegek 3/4 gömbhéjai
+        const shellGeo = new THREE.SphereGeometry(r, 32, 32, 0, Math.PI * 1.5, 0, Math.PI);
+        const col = new THREE.Color(layer.color || 0xffffff);
+        const shellMat = isSun
+          ? new THREE.MeshBasicMaterial({ color: col, side: THREE.BackSide, transparent: true, opacity: 0.8 })
+          : new THREE.MeshStandardMaterial({ color: col, roughness: 0.7, metalness: 0.15, side: THREE.BackSide, transparent: true, opacity: 0.85 });
+        const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+        cutawayGroup.add(shellMesh);
+      }
+    });
+
+    return cutawayGroup;
+  }
+
+  /**
+   * Keresztmetszeti textúra rajzolása a metszet lapjaihoz
+   */
+  generateSliceCanvas(layers, isSun) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    const cx = 256;
+    const cy = 256;
+    const maxR = 256;
+
+    ctx.clearRect(0, 0, 512, 512);
+
+    // Rétegek kirajzolása kívülről befelé haladva
+    layers.forEach((layer, idx) => {
+      const r = maxR * layer.radiusRatio;
+      if (r <= 0) return;
+
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+
+      if (idx === layers.length - 1) {
+        // Mag - sugárzó gradiens
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        if (isSun) {
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.5, '#fff9c4');
+          grad.addColorStop(1, '#ffc107');
+        } else {
+          grad.addColorStop(0, '#ffffff');
+          grad.addColorStop(0.5, '#fff9c4');
+          grad.addColorStop(1, '#ffe082');
+        }
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = layer.crossColor || layer.color;
+      }
+      ctx.fill();
+
+      // Határvonal
+      ctx.strokeStyle = isSun ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.28)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    });
+
+    return canvas;
+  }
+
+  /**
+   * Bolygó 3D metszetének ki- és bekapcsolása
+   */
+  setPlanetCutaway(planetId, enabled) {
+    const planet = this.planets.find(p => p.data.id === planetId);
+    if (!planet || !planet.cutawayGroup) return false;
+
+    planet.isCutaway = !!enabled;
+    if (planet.normalMesh) planet.normalMesh.visible = !enabled;
+    if (planet.cutawayGroup) planet.cutawayGroup.visible = !!enabled;
+
+    if (planet.data.id === 'sun' && planet.coronaMesh) {
+      planet.coronaMesh.visible = !enabled;
+    }
+
+    if (enabled) {
+      planet.mesh.rotation.y = Math.PI * 0.35;
+    }
+
+    return planet.isCutaway;
+  }
+
+  isPlanetCutaway(planetId) {
+    const planet = this.planets.find(p => p.data.id === planetId);
+    return planet ? !!planet.isCutaway : false;
   }
 
   flyCameraTo(targetCamPos, targetLookAt) {

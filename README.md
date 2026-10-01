@@ -24,6 +24,14 @@ Egy lenyűgöző, interaktív 3D csillagászati bemutató weboldal a Naprendszer
   - 📖 **Részletes bemutatás:** Tudományos összefoglaló szöveg.
   - ✨ **Érdekességek (Tudtad-e?):** 4 darab lenyűgöző tény mindegyik égitesthez.
 
+- **🔬 Belső Felépítés & Földrajzi Gömbhéj Modul (Föld és Nap):**
+  - **3D Negyedmetszet (Cutaway) a térben:** Egy kattintással megnyitható az égitest belső felépítése 3D-ben, valós térbeli gömbhéjakkal és izzó maggal.
+  - **Interaktív 2.5D Keresztmetszeti Ábra:** Az infopanelben a rétegek fölé vive a kurzort vagy rákattintva közvetlen fénylő kiemelés és mutatóvonal jelenik meg.
+  - **🌍 Föld belső szerkezete:** Földkéreg (óceáni és kontinentális kéreg, litoszféra), Felső köpeny (asztenoszféra, köpenykonvekció, lemeztektonika), Alsó köpeny (mezoszféra), Külső mag (folyékony fém, Föld mágneses mezejét keltő geodinamó), Belső mag (szilárd kristályos vas-nikkel mag).
+  - **📏 Geofizikai Határfelületek:** Mohorovičić (Moho), Gutenberg-Wiechert és Lehmann felületek vizuális jelölése és magyarázata.
+  - **☀️ Nap belső szerkezete:** Mag (15 millió °C, hidrogénfúzió), Sugárzási öv (fotonok vándorlása), Tahoklin (mágneses dinamó), Konvekciós öv (plazmaáramlások, granuláció), Fotoszféra (napfoltok), Kromoszféra és Korona (napszél).
+  - **📚 Földrajz érettségi / tananyag szempontok:** Részletes kőzettani, halmazállapoti, hőmérsékleti és mélységi adatok, valamint összefoglaló tanulási táblázat.
+
 - **🎮 Interakciók és Vezérlés:**
   - **Forgatás:** Bal egérgomb nyomva tartása és mozgatása / érintés mobilon.
   - **Zoom:** Egérgörgő vagy 2 ujjas csippentés.
@@ -54,7 +62,24 @@ A repó tartalmaz egy előre konfigurált munkafolyamatot a `.github/workflows/d
 
 ## 🚀 Indítás Helyi Gépen
 
-A projekt tiszta HTML5, CSS3 és Vanilla JavaScript modulokat használ, nincs szükség bonyolult build folyamatra.
+A projekt tiszta HTML5, CSS3 és Vanilla JavaScript ES modulokat használ. A böngészők biztonsági szabályai (CORS) miatt helyi webszerver szükséges a futtatáshoz.
+
+### 1. lehetőség: Node.js / NPM (Ajánlott)
+
+1. Csomagok telepítése (csak az első alkalommal):
+   ```bash
+   npm install
+   ```
+2. Szerver indítása:
+   ```bash
+   npm run dev
+   ```
+3. Nyisd meg a böngésződben:
+   ```
+   http://localhost:3000
+   ```
+
+### 2. lehetőség: Python beépített szerver
 
 1. Nyiss meg egy terminált a projekt mappájában:
    ```bash
@@ -64,3 +89,4 @@ A projekt tiszta HTML5, CSS3 és Vanilla JavaScript modulokat használ, nincs sz
    ```
    http://localhost:8000
    ```
+

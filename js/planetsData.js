@@ -32,7 +32,97 @@ export const solarSystemData = [
     orbitRadius3D: 0,
     orbitSpeed: 0,
     rotationSpeed: 0.002,
-    texture: "sun"
+    texture: "sun",
+    internalStructure: {
+      title: "A Nap belső felépítése",
+      summary: "A Nap egy gigantikus, forró plazmagömb. Energiatermelése a központi magban zajlik termonukleáris magfúzióval, amely több százezer éves sugárzási és áramlási úton jut el a látható fotoszféráig, majd a napkoronán át a bolygóközi térbe.",
+      layers: [
+        {
+          id: "sun-core",
+          name: "Mag (Fúziós mag)",
+          latinName: "Nucleus solaris",
+          depth: "0 – 175 000 km (a sugár 0–25%-a)",
+          temp: "~15 000 000 °C",
+          state: "Extrém sűrű plazma (~150 g/cm³)",
+          composition: "Hidrogén (héliummá alakul), szabad protonok és elektronok",
+          color: "#ffffff",
+          crossColor: "#fff8e1",
+          radiusRatio: 0.25,
+          desc: "A Nap központi energiatermelő magja. Az óriási, 250 milliárd atmoszféra nyomás és 15 millió °C hatására proton-proton ciklusban hidrogén fuzionál héliummá. Másodpercenként 600 millió tonna hidrogén ég el, miközben 4,26 millió tonna anyag alakul közvetlenül tiszta energiává (E=mc²).",
+          geoKeyFact: "A magban keletkező neutrínók akadálytalanul áthaladnak a Napon és ~8 perc alatt elérik a Földet, közvetlen információt nyújtva a fúzió aktuális állapotáról."
+        },
+        {
+          id: "sun-rad",
+          name: "Sugárzási öv (Radiatív zóna)",
+          latinName: "Zona radiativa",
+          depth: "175 000 – 490 000 km (a sugár 25–70%-a)",
+          temp: "7 000 000 – 2 000 000 °C",
+          state: "Sűrű plazma (20 – 0,2 g/cm³)",
+          composition: "Ionizált hidrogén- és héliumplazma",
+          color: "#ffc107",
+          crossColor: "#ffa000",
+          radiusRatio: 0.70,
+          desc: "Ebben a rétegben az energia nagyenergiájú gamma-fotonok formájában terjed. A plazma olyan sűrű, hogy a fotonok folyamatos ütközéseket és szóródást szenvednek el, így véletlenszerű bolyongással 100 000 – 1 000 000 évbe telik, mire elérik a felsőbb rétegeket.",
+          geoKeyFact: "A ma a Földre érkező napfény fotonjai a Nap magjában még az emberiség hajnalán vagy jóval korábban keletkeztek."
+        },
+        {
+          id: "sun-tach",
+          name: "Tahoklin (Mágneses határzóna)",
+          latinName: "Tachoclina",
+          depth: "A sugárzási és áramlási öv határfelülete (~0,70 R)",
+          temp: "~2 000 000 °C",
+          state: "Erős nyírási plazmaréteg",
+          composition: "Dinamikusan nyírt mágneses plazma",
+          color: "#ff7043",
+          crossColor: "#f4511e",
+          radiusRatio: 0.74,
+          desc: "Vékony átmeneti zóna a merev testként forgó belső sugárzási öv és a differenciálisan forgó konvekciós öv között. A fizikai modellek szerint itt generálódik a Nap hatalmas globális mágneses mezeje.",
+          geoKeyFact: "A tahoklinban feltekeredő mágneses fluxuscsövek felelősek a 11 éves napfoltciklusért és a gigantikus fler-kitörésekért."
+        },
+        {
+          id: "sun-conv",
+          name: "Konvekciós öv (Áramlási zóna)",
+          latinName: "Zona convectiva",
+          depth: "490 000 – 696 000 km (a sugár külső 30%-a)",
+          temp: "2 000 000 – 5 500 °C",
+          state: "Turbulens gáz- és plazmaáramlások",
+          composition: "Felszálló forró és lesüllyedő hűvösebb plazmacellák",
+          color: "#d84315",
+          crossColor: "#bf360c",
+          radiusRatio: 0.95,
+          desc: "Itt a plazma már eléggé lehűl ahhoz, hogy a sugárzás helyett a fizikai hőáramlás (konvekció) vegye át a hőszállítást: hatalmas forró plazmabuborékok emelkednek fel a felszínre, leadják energiájukat, majd visszahűlve lesüllyednek.",
+          geoKeyFact: "A konvekciós áramlások a látható napfelszínen kb. 1000-1500 km átmérőjű mozgó cellákat, úgynevezett granulációt alakítanak ki."
+        },
+        {
+          id: "sun-photo",
+          name: "Fotoszféra (A látható felszín)",
+          latinName: "Photosphera",
+          depth: "0 – 500 km vastag réteg",
+          temp: "4 500 – 6 000 °C (átlagosan 5 500 °C)",
+          state: "Izzó gázréteg (a látható fény kibocsátója)",
+          composition: "73% Hidrogén, 25% Hélium, 2% fémnyomok",
+          color: "#ffee58",
+          crossColor: "#ffeb3b",
+          radiusRatio: 1.0,
+          desc: "A Nap optikailag látható fényes kérge, ahonnan a napsugarak akadálytalanul kirepülnek az űrbe. Felszínén figyelhetők meg a napfoltok, melyek az erős mágneses mezők által lehűtött (~3800 °C-os) régiók.",
+          geoKeyFact: "A fotoszférából kilépő fotonok pontosan 8 perc 20 másodperc alatt teszik meg a 150 millió km-es utat a Földig."
+        },
+        {
+          id: "sun-corona",
+          name: "Korona & Kromoszféra (Légkör)",
+          latinName: "Corona solaris",
+          depth: "Felszíntől több millió km-ig az űrbe",
+          temp: "Kromoszféra: ~10 000 °C | Korona: 1 – 3 000 000 °C",
+          state: "Rendkívül ritka, szuperforró mágneses plazma",
+          composition: "Nagyenergiájú protonok és elektronok",
+          color: "#fff9c4",
+          crossColor: "#fff176",
+          radiusRatio: 1.25,
+          desc: "A Nap ritka, de rendkívül kiterjedt külső légköre. Bár a felszín csak 5500 °C, a mágneses hullámok (Alfvén-hullámok) a külső koronát több millió fokra hevítik fel. Innen fúj a napszél, és innen szakadnak ki a koronakidobódások (CME).",
+          geoKeyFact: "A napkorona szabad szemmel kizárólag teljes napfogyatkozás idején csodálható meg ezüstös fénykoszorúként."
+        }
+      ]
+    }
   },
   {
     id: "mercury",
@@ -122,7 +212,93 @@ export const solarSystemData = [
     orbitRadius3D: 60,
     orbitSpeed: 0.018,
     rotationSpeed: 0.01,
-    texture: "earth"
+    texture: "earth",
+    internalStructure: {
+      title: "A Föld belső felépítése (Gömbhéjak)",
+      summary: "A Föld koncentrikus gömbhéjakból (geoszférákból) épül fel. Belső szerkezetét a kőzetek sűrűsége, kémiai összetétele, valamint a földrengéshullámok (P- és S-hullámok) terjedése és visszaverődése alapján térképezték fel a geofizikusok.",
+      layers: [
+        {
+          id: "earth-crust",
+          name: "Földkéreg",
+          latinName: "Crusta terrestris",
+          depth: "0 – 70 km mélységig",
+          temp: "Felszíni hőmérséklettől ~500 °C-ig",
+          state: "Szilárd, rideg kőzetburok",
+          density: "2,7 – 3,0 g/cm³",
+          composition: "Szilícium, alumínium, oxigén (SiAl és SiMa kőzetek: gránit, andezit, bazalt)",
+          color: "#4caf50",
+          crossColor: "#81c784",
+          radiusRatio: 1.0,
+          thicknessKm: "5 – 70 km",
+          desc: "A Föld legkülső, legvékonyabb szilárd rétege. Két fő altípusa ismert:\n• Óceáni kéreg: vékonyabb (5–10 km), fiatalabb és sűrűbb (3,0 g/cm³) bazaltos kőzetlemezekből áll.\n• Kontinentális kéreg: vastagabb (30–70 km, magashegységek alatt eléri a 70 km-t is), régebbi, kevésbé sűrű (2,7 g/cm³) gránitos-üledékes kőzetekből áll.",
+          geoKeyFact: "Mohorovičić-felület (Moho): A kéreg és a felső köpeny határa, ahol a földrengéshullámok sebessége ugrásszerűen megnő. A kéreg a legfelső szilárd köpennyel együtt alkotja a mozgó kőzetlemezekre tagolódó litoszférát (kőzetburkot)."
+        },
+        {
+          id: "earth-upper-mantle",
+          name: "Felső köpeny (Asztenoszféra)",
+          latinName: "Mantellum superius",
+          depth: "70 – 700 km mélységig",
+          temp: "500 – 1 400 °C",
+          state: "Képlékeny / plasztikus kőzetolvadék",
+          density: "3,3 – 4,0 g/cm³",
+          composition: "Peridotit, olivin és piroxén gazdag szilikátok",
+          color: "#ff9800",
+          crossColor: "#ffb74d",
+          radiusRatio: 0.89,
+          thicknessKm: "~630 km",
+          desc: "Közvetlenül a litoszféra alatt helyezkedik el. A magas hőmérséklet és a hidrosztatikai nyomás együttes hatására a kőzetek itt nincsenek szilárd állapotban, hanem mézszerűen képlékenyek (asztenoszféra = 'gyenge szféra'). Ebben a zónában lassú, évi néhány cm-es magmás hőáramlások keringenek.",
+          geoKeyFact: "Lemeztektonika motorja: A felső köpeny konvekciós áramlásai szállítószalagként hajtják a hátukon úszó kőzetlemezeket, létrehozva a vulkánokat, szubdukciós óceáni árkokat és gyűrthegységeket."
+        },
+        {
+          id: "earth-lower-mantle",
+          name: "Alsó köpeny (Mezoszféra)",
+          latinName: "Mantellum inferius",
+          depth: "700 – 2 900 km mélységig",
+          temp: "1 400 – 3 000 °C",
+          state: "Szilárd kristályos kőzet (a gigantikus nyomás miatt)",
+          density: "4,4 – 5,6 g/cm³",
+          composition: "Nagy sűrűségű bridgmanit, ferromagnezit és szilícium-oxidok",
+          color: "#e64a19",
+          crossColor: "#ff7043",
+          radiusRatio: 0.55,
+          thicknessKm: "~2 200 km",
+          desc: "A Föld legnagyobb térfogatú övezete (a Föld térfogatának mintegy 55%-át teszi ki). Bár a hőmérséklet mélyen eléri a 3000 °C-ot, az iszonyatos kőzetnyomás miatt az ásványok szilárd kristályrácsba merevednek. Alsó határán található a D'' réteg, ahonnan a forrópontos vulkánokat tápláló köpenycsóvák erednek.",
+          geoKeyFact: "Gutenberg-Wiechert felület (2900 km): A köpeny és a külső mag határa. A transzverzális földrengéshullámok (S-hullámok) itt teljesen elnyelődnek, mert folyadékban nem terjednek; a longitudinális (P) hullámok lelassulnak, árnyékzónát hozva létre a Föld túlsó oldalán."
+        },
+        {
+          id: "earth-outer-core",
+          name: "Külső mag (Folyékony mag)",
+          latinName: "Nucleus exterior",
+          depth: "2 900 – 5 150 km mélységig",
+          temp: "3 000 – 4 500 °C",
+          state: "Folyékony fémolvadék (örvénylő áramlások)",
+          density: "9,9 – 12,2 g/cm³",
+          composition: "85% Vas, 10% Nikkel, 5% könnyű elemek (kén, oxigén)",
+          color: "#ffc107",
+          crossColor: "#ffd54f",
+          radiusRatio: 0.35,
+          thicknessKm: "~2 250 km",
+          desc: "Izzó, folyékony vasból és nikkelből álló réteg. A Föld forgása keltette Coriolis-erő és a belső hőkülönbségek miatt a jó elektromos vezető képességű folyékony fém spirális örvényekben áramlik, hatalmas természetes dinamóként üzemelve.",
+          geoKeyFact: "Geodinamó és mágneses védelem: A külső mag gerjeszti a Föld mágneses mezejét (magnetoszféra), amely pajzsként véd minket a Nap gyilkos napszelétől és a kozmikus sugárzástól. E nélkül a földi légkör rég elszökött volna az űrbe."
+        },
+        {
+          id: "earth-inner-core",
+          name: "Belső mag (Szilárd fémgömb)",
+          latinName: "Nucleus interior",
+          depth: "5 150 – 6 371 km mélységig (Centrum)",
+          temp: "5 000 – 6 000 °C",
+          state: "Szilárd kristályos fémötvözet",
+          density: "12,8 – 13,1 g/cm³",
+          composition: "Kristályos vas és nikkel ötvözet",
+          color: "#fffde7",
+          crossColor: "#ffffff",
+          radiusRatio: 0.19,
+          thicknessKm: "~1 220 km (sugár)",
+          desc: "A Föld legbelseje: egy kb. 1220 km sugarú (a Hold méretének 70%-át kitevő) szilárd fémmag. Hőmérséklete vetekszik a Nap felszínével (~5500 °C), ám a kolosszális, mintegy 3,6 millió atmoszférás nyomás miatt az atomok nem tudnak szétfolyni, hanem szilárd fémes kristályrácsba rendeződnek.",
+          geoKeyFact: "Lehmann-felület (5150 km): A folyékony külső és szilárd belső mag határa, amelyet Inge Lehmann dán kutató fedezett fel 1936-ban. A modern szeizmológia szerint a belső mag különállóan, enyhén gyorsabban forog, mint a Föld többi része (szuperrotáció)."
+        }
+      ]
+    }
   },
   {
     id: "mars",

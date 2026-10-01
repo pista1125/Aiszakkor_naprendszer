@@ -10,6 +10,9 @@ export class UIManager {
   constructor(engine) {
     this.engine = engine;
     this.currentPlanet = null;
+    this.currentTab = 'surface';
+    this.selectedLayerId = null;
+    this.hoveredLayerId = null;
     this.audioContext = null;
     this.isMuted = true;
     this.ambientNodes = null;
@@ -36,6 +39,26 @@ export class UIManager {
     this.btnHelp = document.getElementById('btnHelp');
     this.btnCloseHelp = document.getElementById('btnCloseHelp');
     this.lineupBanner = document.getElementById('lineupBanner');
+
+    // Belső felépítés (Földrajz) elemek
+    this.drawerTabsWrapper = document.getElementById('drawerTabsWrapper');
+    this.tabSurfaceView = document.getElementById('tabSurfaceView');
+    this.tabStructureView = document.getElementById('tabStructureView');
+    this.btnToggle3DSceneCutaway = document.getElementById('btnToggle3DSceneCutaway');
+    this.btnSceneCutawayText = document.getElementById('btnSceneCutawayText');
+    this.visualPreviewBox = document.querySelector('.visual-preview-box');
+    this.previewCutawayHint = document.getElementById('previewCutawayHint');
+    this.miniPlanetCanvas = document.getElementById('miniPlanetCanvas');
+
+    this.surfaceViewContent = document.getElementById('surfaceViewContent');
+    this.structureViewContent = document.getElementById('structureViewContent');
+    this.structureTitle = document.getElementById('structureTitle');
+    this.structureSummary = document.getElementById('structureSummary');
+    this.layerSelectorList = document.getElementById('layerSelectorList');
+    this.layerScaleBar = document.getElementById('layerScaleBar');
+    this.layerScaleLegend = document.getElementById('layerScaleLegend');
+    this.selectedLayerCard = document.getElementById('selectedLayerCard');
+    this.layersSummaryTableBody = document.getElementById('layersSummaryTableBody');
   }
 
   buildPlanetList() {
@@ -149,6 +172,42 @@ export class UIManager {
       });
     }
 
+    // Felszín vs Belső felépítés nézetváltó tabok
+    if (this.tabSurfaceView && this.tabStructureView) {
+      this.tabSurfaceView.addEventListener('click', () => this.switchTab('surface'));
+      this.tabStructureView.addEventListener('click', () => this.switchTab('structure'));
+    }
+
+    // 3D Térbeli metszet gomb a miniatűr dobozban
+    if (this.btnToggle3DSceneCutaway) {
+      this.btnToggle3DSceneCutaway.addEventListener('click', () => {
+        if (!this.currentPlanet) return;
+        const isCut = this.engine.isPlanetCutaway(this.currentPlanet.id);
+        const newState = this.engine.setPlanetCutaway(this.currentPlanet.id, !isCut);
+        this.update3DCutawayButtonState(newState);
+      });
+    }
+
+    // Miniatűr canvas egérinterakciók (metszet módban réteg kiválasztása)
+    if (this.miniPlanetCanvas) {
+      this.miniPlanetCanvas.addEventListener('pointermove', (e) => {
+        if (this.currentTab !== 'structure' || !this.currentPlanet || !this.currentPlanet.internalStructure) return;
+        this.handleCutawayCanvasPointer(e);
+      });
+
+      this.miniPlanetCanvas.addEventListener('pointerleave', () => {
+        if (this.hoveredLayerId !== null) {
+          this.hoveredLayerId = null;
+          this.renderMiniPreview(this.currentPlanet);
+        }
+      });
+
+      this.miniPlanetCanvas.addEventListener('click', (e) => {
+        if (this.currentTab !== 'structure' || !this.currentPlanet || !this.currentPlanet.internalStructure) return;
+        this.handleCutawayCanvasClick(e);
+      });
+    }
+
     // ESC billentyűre bezárás
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
@@ -162,6 +221,41 @@ export class UIManager {
     });
   }
 
+  switchTab(tabName) {
+    if (!this.currentPlanet) return;
+    if (tabName === 'structure' && !this.currentPlanet.internalStructure) return;
+
+    this.currentTab = tabName;
+    if (this.tabSurfaceView) this.tabSurfaceView.classList.toggle('active', tabName === 'surface');
+    if (this.tabStructureView) this.tabStructureView.classList.toggle('active', tabName === 'structure');
+
+    if (this.surfaceViewContent) this.surfaceViewContent.classList.toggle('active', tabName === 'surface');
+    if (this.structureViewContent) this.structureViewContent.classList.toggle('active', tabName === 'structure');
+
+    if (this.visualPreviewBox) {
+      this.visualPreviewBox.classList.toggle('cutaway-mode', tabName === 'structure');
+    }
+
+    // Ha belső felépítésre váltunk, a 3D szimulációban is aktiváljuk a metszetet
+    if (tabName === 'structure') {
+      const isCut = this.engine.isPlanetCutaway(this.currentPlanet.id);
+      if (!isCut) {
+        this.engine.setPlanetCutaway(this.currentPlanet.id, true);
+        this.update3DCutawayButtonState(true);
+      }
+    }
+
+    this.renderMiniPreview(this.currentPlanet);
+  }
+
+  update3DCutawayButtonState(isActive) {
+    if (!this.btnToggle3DSceneCutaway) return;
+    this.btnToggle3DSceneCutaway.classList.toggle('active', isActive);
+    if (this.btnSceneCutawayText) {
+      this.btnSceneCutawayText.textContent = isActive ? 'Normál 3D gömb' : '3D metszet térben';
+    }
+  }
+
   showPlanetInfo(planet) {
     this.currentPlanet = planet;
     if (!planet) {
@@ -173,6 +267,19 @@ export class UIManager {
     document.querySelectorAll('.planet-list-item').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.id === planet.id);
     });
+
+    // Kezeljük a Belső felépítés tabot és a 3D metszet gombot
+    if (planet.internalStructure) {
+      if (this.drawerTabsWrapper) this.drawerTabsWrapper.style.display = 'flex';
+      if (this.btnToggle3DSceneCutaway) this.btnToggle3DSceneCutaway.style.display = 'flex';
+      this.setupStructureView(planet);
+      this.update3DCutawayButtonState(this.engine.isPlanetCutaway(planet.id));
+    } else {
+      if (this.drawerTabsWrapper) this.drawerTabsWrapper.style.display = 'none';
+      if (this.btnToggle3DSceneCutaway) this.btnToggle3DSceneCutaway.style.display = 'none';
+      this.switchTab('surface');
+      this.engine.setPlanetCutaway(planet.id, false);
+    }
 
     // Infopanel elemek kitöltése
     const badge = document.getElementById('drawerBadge');
@@ -225,14 +332,23 @@ export class UIManager {
       });
     }
 
-    // Mini 3D orv / textúra előnézet
+    // Mini előnézet / metszet kirajzolása
     this.renderMiniPreview(planet);
 
     this.infoDrawer.classList.add('open');
   }
 
   hidePlanetInfo() {
+    if (this.currentPlanet) {
+      this.engine.setPlanetCutaway(this.currentPlanet.id, false);
+    }
     this.currentPlanet = null;
+    this.currentTab = 'surface';
+    if (this.tabSurfaceView) this.tabSurfaceView.classList.add('active');
+    if (this.tabStructureView) this.tabStructureView.classList.remove('active');
+    if (this.surfaceViewContent) this.surfaceViewContent.classList.add('active');
+    if (this.structureViewContent) this.structureViewContent.classList.remove('active');
+    if (this.visualPreviewBox) this.visualPreviewBox.classList.remove('cutaway-mode');
     this.infoDrawer.classList.remove('open');
     document.querySelectorAll('.planet-list-item').forEach(btn => btn.classList.remove('active'));
   }
@@ -262,6 +378,12 @@ export class UIManager {
   }
 
   renderMiniPreview(planet) {
+    if (!planet) return;
+    if (this.currentTab === 'structure' && planet.internalStructure) {
+      this.renderCutawayPreview(planet);
+      return;
+    }
+
     const canvas = document.getElementById('miniPlanetCanvas');
     if (!canvas) return;
 
@@ -351,6 +473,417 @@ export class UIManager {
     ctx.strokeStyle = planet.glowColor || 'rgba(255,255,255,0.4)';
     ctx.lineWidth = 2.5;
     ctx.stroke();
+  }
+
+  /**
+   * Belső felépítés 2.5D/3D interaktív rétegmetszetének kirajzolása
+   */
+  renderCutawayPreview(planet) {
+    const canvas = this.miniPlanetCanvas;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const cx = w * 0.44;
+    const cy = h * 0.50;
+    const maxR = w * 0.38;
+
+    const isSun = (planet.id === 'sun');
+    const layers = planet.internalStructure ? planet.internalStructure.layers : [];
+    if (!layers || layers.length === 0) return;
+
+    // 1. Kozmikus haló háttér
+    const bgHalo = ctx.createRadialGradient(cx, cy, maxR * 0.2, cx, cy, maxR * 1.35);
+    if (isSun) {
+      bgHalo.addColorStop(0, 'rgba(255, 170, 0, 0.5)');
+      bgHalo.addColorStop(0.6, 'rgba(255, 80, 0, 0.15)');
+      bgHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    } else {
+      bgHalo.addColorStop(0, 'rgba(56, 189, 248, 0.25)');
+      bgHalo.addColorStop(0.7, 'rgba(30, 58, 138, 0.1)');
+      bgHalo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    }
+    ctx.fillStyle = bgHalo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR * 1.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Külső gömb 3/4 része (bal oldal és alsó rész, a nyitás -PI/2 és 0 között van)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, maxR, 0, Math.PI * 1.5, false);
+    ctx.closePath();
+    ctx.clip();
+
+    const texCanvas = this.engine.textureGen.getTextureForPlanet(planet.id);
+    ctx.drawImage(texCanvas, 0, 0, texCanvas.width, texCanvas.height, cx - maxR, cy - maxR, maxR * 2, maxR * 2);
+
+    if (!isSun) {
+      const shadowGrad = ctx.createRadialGradient(
+        cx - maxR * 0.35, cy - maxR * 0.35, maxR * 0.1,
+        cx, cy, maxR
+      );
+      shadowGrad.addColorStop(0, 'rgba(255, 255, 255, 0.2)');
+      shadowGrad.addColorStop(0.6, 'rgba(0, 0, 0, 0.1)');
+      shadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.88)');
+      ctx.fillStyle = shadowGrad;
+      ctx.fillRect(cx - maxR, cy - maxR, maxR * 2, maxR * 2);
+    }
+    ctx.restore();
+
+    // 3. A kivágott 1/4 negyedmetszet (szög: -PI/2 -től 0-ig)
+    let highlightedLayerInfo = null;
+
+    layers.forEach((layer, idx) => {
+      const rOuter = maxR * layer.radiusRatio;
+      const nextLayer = layers[idx + 1];
+      const rInner = nextLayer ? maxR * nextLayer.radiusRatio : 0;
+      const isSelected = (layer.id === this.selectedLayerId);
+      const isHovered = (layer.id === this.hoveredLayerId);
+
+      if (isSelected || isHovered) {
+        highlightedLayerInfo = { layer, rOuter, rInner, isSelected, isHovered };
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, rOuter, -Math.PI / 2, 0, false);
+      ctx.lineTo(cx, cy);
+      ctx.closePath();
+
+      if (idx === layers.length - 1) {
+        // Legbelső mag - sugárzó gradiens
+        const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rOuter);
+        if (isSun) {
+          coreGrad.addColorStop(0, '#ffffff');
+          coreGrad.addColorStop(0.5, '#fff9c4');
+          coreGrad.addColorStop(1, '#ffc107');
+        } else {
+          coreGrad.addColorStop(0, '#ffffff');
+          coreGrad.addColorStop(0.6, '#fff9c4');
+          coreGrad.addColorStop(1, '#ffe082');
+        }
+        ctx.fillStyle = coreGrad;
+      } else {
+        ctx.fillStyle = layer.crossColor || layer.color;
+      }
+      ctx.fill();
+
+      // Finom réteghatár vonal
+      ctx.strokeStyle = isSun ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      ctx.restore();
+    });
+
+    // 4. Kijelölt vagy hoverelt réteg kiemelése és mutató vonal
+    if (highlightedLayerInfo) {
+      const { layer, rOuter, rInner, isSelected } = highlightedLayerInfo;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, rOuter, -Math.PI / 2, 0, false);
+      if (rInner > 0) {
+        ctx.arc(cx, cy, rInner, 0, -Math.PI / 2, true);
+      } else {
+        ctx.lineTo(cx, cy);
+      }
+      ctx.closePath();
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = isSelected ? '#38bdf8' : '#ffffff';
+      ctx.shadowColor = isSelected ? 'rgba(56, 189, 248, 0.9)' : 'rgba(255, 255, 255, 0.8)';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+
+      // Mutató vonal
+      const midR = (rOuter + rInner) / 2;
+      const angle = -Math.PI / 4;
+      const pinStartX = cx + Math.cos(angle) * midR;
+      const pinStartY = cy + Math.sin(angle) * midR;
+      const pinCornerX = cx + maxR * 1.05;
+      const pinCornerY = Math.max(20, pinStartY - 10);
+      const pinEndX = Math.min(w - 12, pinCornerX + 45);
+
+      ctx.beginPath();
+      ctx.moveTo(pinStartX, pinStartY);
+      ctx.lineTo(pinCornerX, pinCornerY);
+      ctx.lineTo(pinEndX, pinCornerY);
+      ctx.strokeStyle = isSelected ? '#38bdf8' : '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(pinStartX, pinStartY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = isSelected ? '#38bdf8' : '#ffffff';
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+      ctx.font = '600 11px Outfit, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'right';
+      ctx.fillText(layer.name, pinEndX, pinCornerY - 4);
+
+      ctx.font = '500 9px monospace';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText(layer.depth, pinEndX, pinCornerY + 11);
+
+      ctx.restore();
+    }
+
+    // 5. Geológiai határfelületek (Földnél)
+    if (planet.id === 'earth') {
+      this.drawEarthGeologicalDiscontinuities(ctx, cx, cy, maxR);
+    }
+
+    // Külső perem
+    ctx.beginPath();
+    ctx.arc(cx, cy, maxR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  drawEarthGeologicalDiscontinuities(ctx, cx, cy, maxR) {
+    const boundaries = [
+      { r: maxR * 0.98, label: 'Moho' },
+      { r: maxR * 0.55, label: 'Gutenberg' },
+      { r: maxR * 0.19, label: 'Lehmann' }
+    ];
+
+    boundaries.forEach(b => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([3, 4]);
+      ctx.arc(cx, cy, b.r, -Math.PI / 2, 0);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+
+  setupStructureView(planet) {
+    if (!planet || !planet.internalStructure) return;
+    const struct = planet.internalStructure;
+    const layers = struct.layers;
+
+    if (this.structureTitle) this.structureTitle.textContent = struct.title;
+    if (this.structureSummary) this.structureSummary.textContent = struct.summary;
+
+    // 1. Rétegválasztó gombok feltöltése
+    if (this.layerSelectorList) {
+      this.layerSelectorList.innerHTML = '';
+      layers.forEach(layer => {
+        const btn = document.createElement('button');
+        btn.className = 'layer-selector-btn';
+        btn.dataset.layerId = layer.id;
+        btn.style.setProperty('--active-layer-color', layer.color);
+
+        btn.innerHTML = `
+          <div class="layer-btn-left">
+            <span class="layer-color-dot" style="background-color: ${layer.color}; color: ${layer.color}"></span>
+            <span class="layer-btn-name">${layer.name}</span>
+          </div>
+          <span class="layer-btn-depth">${layer.depth}</span>
+        `;
+
+        btn.addEventListener('click', () => {
+          this.selectLayer(layer.id);
+        });
+
+        this.layerSelectorList.appendChild(btn);
+      });
+    }
+
+    // 2. Skálasáv és jelmagyarázat feltöltése
+    if (this.layerScaleBar) {
+      this.layerScaleBar.innerHTML = '';
+      for (let i = 0; i < layers.length; i++) {
+        const currentR = layers[i].radiusRatio;
+        const nextR = layers[i + 1] ? layers[i + 1].radiusRatio : 0;
+        const widthPercent = (currentR - nextR) * 100;
+
+        const seg = document.createElement('div');
+        seg.className = 'layer-scale-segment';
+        seg.dataset.layerId = layers[i].id;
+        seg.style.width = `${Math.max(widthPercent, 5)}%`;
+        seg.style.backgroundColor = layers[i].crossColor || layers[i].color;
+        seg.title = `${layers[i].name} (${layers[i].depth})`;
+
+        seg.addEventListener('click', () => {
+          this.selectLayer(layers[i].id);
+        });
+
+        this.layerScaleBar.appendChild(seg);
+      }
+    }
+
+    if (this.layerScaleLegend) {
+      if (planet.id === 'earth') {
+        this.layerScaleLegend.innerHTML = `
+          <span>Felszín (0 km)</span>
+          <span>Moho (70 km)</span>
+          <span>Gutenberg (2900 km)</span>
+          <span>Lehmann (5150 km)</span>
+          <span>Centrum (6371 km)</span>
+        `;
+      } else {
+        this.layerScaleLegend.innerHTML = `
+          <span>Centrum (0 km)</span>
+          <span>Sugárzási öv (~175 ezer km)</span>
+          <span>Konvekciós öv (~490 ezer km)</span>
+          <span>Fotoszféra (~696 ezer km)</span>
+        `;
+      }
+    }
+
+    // 3. Összefoglaló földrajzi táblázat feltöltése
+    if (this.layersSummaryTableBody) {
+      this.layersSummaryTableBody.innerHTML = '';
+      layers.forEach(layer => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td><strong style="color: ${layer.color}">${layer.name}</strong></td>
+          <td>${layer.depth}</td>
+          <td>${layer.state}</td>
+          <td>${layer.temp}</td>
+          <td>${layer.composition}</td>
+        `;
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => this.selectLayer(layer.id));
+        this.layersSummaryTableBody.appendChild(row);
+      });
+    }
+
+    // Alapértelmezett réteg kiválasztása (első réteg)
+    if (layers.length > 0) {
+      this.selectLayer(layers[0].id);
+    }
+  }
+
+  selectLayer(layerId) {
+    if (!this.currentPlanet || !this.currentPlanet.internalStructure) return;
+    const layers = this.currentPlanet.internalStructure.layers;
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    this.selectedLayerId = layerId;
+
+    document.querySelectorAll('.layer-selector-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.layerId === layerId);
+    });
+
+    document.querySelectorAll('.layer-scale-segment').forEach(seg => {
+      seg.classList.toggle('active', seg.dataset.layerId === layerId);
+    });
+
+    this.renderSelectedLayerCard(layer);
+    this.renderMiniPreview(this.currentPlanet);
+  }
+
+  renderSelectedLayerCard(layer) {
+    if (!this.selectedLayerCard) return;
+
+    this.selectedLayerCard.style.borderColor = layer.color;
+    this.selectedLayerCard.style.boxShadow = `0 0 25px ${layer.color}30`;
+
+    this.selectedLayerCard.innerHTML = `
+      <div class="layer-card-header">
+        <div class="layer-card-title-group">
+          <h4>
+            <span class="layer-color-dot" style="background-color: ${layer.color}; color: ${layer.color}; box-shadow: 0 0 10px ${layer.color}"></span>
+            ${layer.name}
+          </h4>
+          <div class="layer-card-latin">${layer.latinName || ''}</div>
+        </div>
+        <div class="layer-card-depth-badge">${layer.depth}</div>
+      </div>
+
+      <div class="layer-metrics-grid">
+        <div class="layer-metric-item">
+          <div class="layer-metric-lbl">📏 Vastagság / Kiterjedés</div>
+          <div class="layer-metric-val">${layer.thicknessKm || layer.depth}</div>
+        </div>
+        <div class="layer-metric-item">
+          <div class="layer-metric-lbl">🌡️ Hőmérséklet</div>
+          <div class="layer-metric-val">${layer.temp}</div>
+        </div>
+        <div class="layer-metric-item">
+          <div class="layer-metric-lbl">🪨 Halmazállapot</div>
+          <div class="layer-metric-val">${layer.state}</div>
+        </div>
+        <div class="layer-metric-item">
+          <div class="layer-metric-lbl">⚖️ Sűrűség / Jellemzők</div>
+          <div class="layer-metric-val">${layer.density || '–'}</div>
+        </div>
+      </div>
+
+      <div class="layer-desc-text">
+        <strong>Anyagi összetétel:</strong> ${layer.composition}<br><br>
+        ${layer.desc}
+      </div>
+
+      ${layer.geoKeyFact ? `
+        <div class="geo-fact-box">
+          <div class="geo-fact-badge">
+            <span>💡</span>
+            <span>Földrajzi összefüggés / Érettségi kulcsfogalom</span>
+          </div>
+          <div class="geo-fact-text">${layer.geoKeyFact}</div>
+        </div>
+      ` : ''}
+    `;
+  }
+
+  handleCutawayCanvasPointer(e) {
+    if (!this.miniPlanetCanvas || !this.currentPlanet || !this.currentPlanet.internalStructure) return;
+    const rect = this.miniPlanetCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (this.miniPlanetCanvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.miniPlanetCanvas.height / rect.height);
+
+    const cx = this.miniPlanetCanvas.width * 0.44;
+    const cy = this.miniPlanetCanvas.height * 0.50;
+    const maxR = this.miniPlanetCanvas.width * 0.38;
+
+    const dx = x - cx;
+    const dy = y - cy;
+    const dist = Math.hypot(dx, dy);
+
+    if (dist > maxR * 1.05) {
+      if (this.hoveredLayerId !== null) {
+        this.hoveredLayerId = null;
+        this.renderMiniPreview(this.currentPlanet);
+      }
+      return;
+    }
+
+    const distRatio = dist / maxR;
+    const layers = this.currentPlanet.internalStructure.layers;
+    let foundLayer = null;
+
+    for (let i = layers.length - 1; i >= 0; i--) {
+      if (distRatio <= layers[i].radiusRatio) {
+        foundLayer = layers[i];
+        break;
+      }
+    }
+
+    if (foundLayer && this.hoveredLayerId !== foundLayer.id) {
+      this.hoveredLayerId = foundLayer.id;
+      this.renderMiniPreview(this.currentPlanet);
+    }
+  }
+
+  handleCutawayCanvasClick() {
+    if (this.hoveredLayerId) {
+      this.selectLayer(this.hoveredLayerId);
+    }
   }
 
   // Atmoszférikus sci-fi térhangzás Web Audio API-val

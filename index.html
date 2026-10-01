@@ -73,66 +73,132 @@
       <button id="btnCloseDrawer" class="btn-close" aria-label="Panel bezárása" title="Bezárás (ESC)">✕</button>
     </div>
 
-    <!-- Vizuális / 3D Mini Előnézet -->
+    <!-- Nézetváltó Tabok (Felszín vs Belső felépítés) -->
+    <div id="drawerTabsWrapper" class="drawer-tabs-wrapper">
+      <button id="tabSurfaceView" class="drawer-tab active" data-tab="surface">
+        <span class="tab-icon">🌐</span>
+        <span>Felszín</span>
+      </button>
+      <button id="tabStructureView" class="drawer-tab" data-tab="structure">
+        <span class="tab-icon">🔬</span>
+        <span>Belső felépítés</span>
+        <span class="tab-badge">Földrajz</span>
+      </button>
+    </div>
+
+    <!-- Vizuális / 3D Mini Előnézet és Metszetdoboz -->
     <div class="visual-preview-box">
-      <canvas id="miniPlanetCanvas" width="280" height="280"></canvas>
+      <canvas id="miniPlanetCanvas" width="300" height="300"></canvas>
+      <div id="previewCutawayHint" class="preview-cutaway-hint">💡 Mozgasd az egeret a rétegek felett vagy kattints!</div>
+      <button id="btnToggle3DSceneCutaway" class="btn-scene-cutaway" title="3D metszet megjelenítése / elrejtése a fő szimulációban">
+        <span class="btn-scene-icon">✂️</span>
+        <span id="btnSceneCutawayText">3D metszet térben</span>
+      </button>
     </div>
 
     <!-- Részletes tartalom -->
     <div class="drawer-content">
-      <div id="drawerTagline" class="planet-tagline">
-        Kék oázis az űrben – az egyetlen ismert égitest élettel.
+      <!-- FELSZÍN NÉZET TARTALMA -->
+      <div id="surfaceViewContent" class="view-content active">
+        <div id="drawerTagline" class="planet-tagline">
+          Kék oázis az űrben – az egyetlen ismert égitest élettel.
+        </div>
+
+        <!-- Fő Telemetriai Metrikák -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">📏 Átmérő</div>
+            <div id="statDiameter" class="metric-value">12 742 km</div>
+            <div id="statDiameterRatio" class="metric-sub">1,0× a Föld átmérője</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">☀️ Távolság a Naptól</div>
+            <div id="statDistance" class="metric-value">149,6 millió km</div>
+            <div id="statDistanceAU" class="metric-sub">1,000 CsE</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">⏱️ Keringési Idő</div>
+            <div id="statOrbit" class="metric-value">365,25 nap</div>
+            <div class="metric-sub">1 Földi év</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">🔄 Tengelyforgás</div>
+            <div id="statRotation" class="metric-value">23 óra 56 perc</div>
+            <div class="metric-sub">1 sziderikus nap</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">🌡️ Hőmérséklet</div>
+            <div id="statTemp" class="metric-value">+15 °C</div>
+            <div class="metric-sub">Felszíni átlag</div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-label">🌕 Kísérők</div>
+            <div id="statMoons" class="metric-value">1 ismert hold</div>
+            <div class="metric-sub">Természetes holdak</div>
+          </div>
+        </div>
+
+        <!-- Leírás -->
+        <div class="section-block">
+          <h3>📖 Áttekintés</h3>
+          <p id="drawerDesc" class="overview-text"></p>
+        </div>
+
+        <!-- Érdekességek (Tudtad-e?) -->
+        <div class="section-block">
+          <h3>✨ Lenyűgöző Érdekességek</h3>
+          <div id="drawerFactsList" class="facts-list"></div>
+        </div>
       </div>
 
-      <!-- Fő Telemetriai Metrikák -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">📏 Átmérő</div>
-          <div id="statDiameter" class="metric-value">12 742 km</div>
-          <div id="statDiameterRatio" class="metric-sub">1,0× a Föld átmérője</div>
+      <!-- BELSŐ FELÉPÍTÉS (FÖLDRAJZ) NÉZET TARTALMA -->
+      <div id="structureViewContent" class="view-content">
+        <div class="structure-header-box">
+          <h3 id="structureTitle">Belső felépítés</h3>
+          <p id="structureSummary" class="structure-summary-text"></p>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-label">☀️ Távolság a Naptól</div>
-          <div id="statDistance" class="metric-value">149,6 millió km</div>
-          <div id="statDistanceAU" class="metric-sub">1,000 CsE</div>
+        <!-- Réteg gombok (Gyorsválasztó) -->
+        <div class="section-block">
+          <div class="section-sub-title">🪐 Rétegek & Gömbhéjak kiválasztása:</div>
+          <div id="layerSelectorList" class="layer-selector-list"></div>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-label">⏱️ Keringési Idő</div>
-          <div id="statOrbit" class="metric-value">365,25 nap</div>
-          <div class="metric-sub">1 Földi év</div>
+        <!-- Méretarányos Gömbhéj Skála sáv -->
+        <div class="section-block">
+          <div class="section-sub-title">📏 Mélységi skála és geoszférák aránya:</div>
+          <div id="layerScaleBar" class="layer-scale-bar"></div>
+          <div id="layerScaleLegend" class="layer-scale-legend"></div>
         </div>
 
-        <div class="metric-card">
-          <div class="metric-label">🔄 Tengelyforgás</div>
-          <div id="statRotation" class="metric-value">23 óra 56 perc</div>
-          <div class="metric-sub">1 sziderikus nap</div>
+        <!-- Kiválasztott réteg részletes kártyája (Földrajzi adatlap) -->
+        <div id="selectedLayerCard" class="selected-layer-card">
+          <!-- Dinamikusan tölti fel a JS -->
         </div>
 
-        <div class="metric-card">
-          <div class="metric-label">🌡️ Hőmérséklet</div>
-          <div id="statTemp" class="metric-value">+15 °C</div>
-          <div class="metric-sub">Felszíni átlag</div>
+        <!-- Földrajzi érettségi / tananyag gyors áttekintő táblázat -->
+        <div class="section-block">
+          <div class="section-sub-title">📚 Földrajz összefoglaló táblázat:</div>
+          <div class="table-responsive">
+            <table class="layers-table">
+              <thead>
+                <tr>
+                  <th>Gömbhéj</th>
+                  <th>Mélység</th>
+                  <th>Állapot</th>
+                  <th>Hőmérséklet</th>
+                  <th>Kőzettan / Összetétel</th>
+                </tr>
+              </thead>
+              <tbody id="layersSummaryTableBody"></tbody>
+            </table>
+          </div>
         </div>
-
-        <div class="metric-card">
-          <div class="metric-label">🌕 Kísérők</div>
-          <div id="statMoons" class="metric-value">1 ismert hold</div>
-          <div class="metric-sub">Természetes holdak</div>
-        </div>
-      </div>
-
-      <!-- Leírás -->
-      <div class="section-block">
-        <h3>📖 Áttekintés</h3>
-        <p id="drawerDesc" class="overview-text"></p>
-      </div>
-
-      <!-- Érdekességek (Tudtad-e?) -->
-      <div class="section-block">
-        <h3>✨ Lenyűgöző Érdekességek</h3>
-        <div id="drawerFactsList" class="facts-list"></div>
       </div>
     </div>
   </aside>
