@@ -37,6 +37,12 @@
         <button class="speed-btn" data-speed="5">5×</button>
       </div>
 
+      <!-- Megjelenítési mód választó (Pályák vs Méretarány) -->
+      <div class="hud-group mode-switcher">
+        <button id="btnModeOrbit" class="mode-btn active" title="3D Keringési pályák szimulációja">🪐 Pályák</button>
+        <button id="btnModeLineup" class="mode-btn" title="Méretarányos összehasonlító sorrend">📏 Méretarány</button>
+      </div>
+
       <!-- Hangulat & Súgó gombok -->
       <div class="hud-group">
         <button id="btnSound" class="btn-icon" title="Kozmikus térhangzás">🔇</button>
@@ -131,10 +137,17 @@
     </div>
   </aside>
 
-  <!-- Alsó Bolygó-gyorsválasztó Dock -->
-  <nav class="bottom-dock-wrapper" aria-label="Bolygó választó">
-    <div id="planetDock" class="dock-container"></div>
-  </nav>
+  <!-- Bal oldali kinyitható égitest lista (Sidebar) -->
+  <aside id="planetSidebar" class="planet-sidebar open" aria-label="Naprendszer égitestek">
+    <div class="sidebar-header">
+      <div class="sidebar-title-box">
+        <span class="sidebar-icon">🌌</span>
+        <span class="sidebar-title">Égitestek</span>
+      </div>
+      <button id="btnToggleSidebar" class="sidebar-toggle" title="Lista összecsukása / kinyitása" aria-label="Lista összecsukása">◀</button>
+    </div>
+    <div id="planetList" class="planet-list"></div>
+  </aside>
 
   <!-- Lebegő Hover Tooltip -->
   <div id="hoverTooltip" class="hover-tooltip"></div>

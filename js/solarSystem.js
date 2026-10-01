@@ -23,6 +23,21 @@ export class SolarSystemEngine {
     this.simSpeed = 1.0;
     this.isPaused = false;
     this.time = 0;
+    this.mode = 'orbit'; // 'orbit' vagy 'lineup'
+
+    // Méretarány / Felsorakoztatási pozíciók az X tengely mentén (Nap és 9 bolygó)
+    this.lineupPositions = {
+      sun: -120,
+      mercury: -88,
+      venus: -74,
+      earth: -58,
+      mars: -44,
+      jupiter: -16,
+      saturn: 20,
+      uranus: 58,
+      neptune: 84,
+      pluto: 104
+    };
 
     // Kamera célpontok az animációhoz
     this.cameraTarget = {
@@ -45,6 +60,35 @@ export class SolarSystemEngine {
     this.setupInteractions();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  setMode(newMode) {
+    if (this.mode === newMode) return;
+    this.mode = newMode;
+    this.focusedPlanet = null;
+    this.isTracking = false;
+
+    if (newMode === 'lineup') {
+      // Pályavonalak elrejtése méretarány módban
+      this.orbitLines.forEach(line => line.visible = false);
+      // Kamera sima átmozgatása panoráma szemből nézetbe
+      this.flyCameraTo(
+        new THREE.Vector3(-10, 4, 195),
+        new THREE.Vector3(-10, 0, 0)
+      );
+    } else {
+      // Keringési pályák visszakapcsolása
+      this.orbitLines.forEach(line => line.visible = true);
+      // Kamera visszamozgatása 3D perspektíva nézetbe
+      this.flyCameraTo(
+        new THREE.Vector3(0, 160, 240),
+        new THREE.Vector3(0, 0, 0)
+      );
+    }
+
+    if (this.onPlanetSelect) {
+      this.onPlanetSelect(null);
+    }
   }
 
   initScene() {
@@ -383,7 +427,7 @@ export class SolarSystemEngine {
     if (!target) return;
 
     this.focusedPlanet = target;
-    this.isTracking = true;
+    this.isTracking = (this.mode === 'orbit' && target.data.id !== 'sun');
 
     // Kiszámítjuk az ideális kameratávolságot a bolygó méretéből
     const distanceOffset = target.data.id === 'sun'
@@ -394,12 +438,17 @@ export class SolarSystemEngine {
 
     const targetPos = target.mesh.position.clone();
     
-    // Kamera pozíciója: kicsit felülről és oldalról nézzen a megvilágított félteke felé
-    const camOffset = new THREE.Vector3(
-      distanceOffset * 0.7,
-      distanceOffset * 0.45,
-      distanceOffset * 0.85
-    );
+    // Kamera pozíciója a mód függvényében
+    let camOffset;
+    if (this.mode === 'lineup') {
+      camOffset = new THREE.Vector3(0, distanceOffset * 0.2, distanceOffset * 1.1);
+    } else {
+      camOffset = new THREE.Vector3(
+        distanceOffset * 0.7,
+        distanceOffset * 0.45,
+        distanceOffset * 0.85
+      );
+    }
 
     this.flyCameraTo(
       targetPos.clone().add(camOffset),
@@ -415,10 +464,17 @@ export class SolarSystemEngine {
     this.focusedPlanet = null;
     this.isTracking = false;
 
-    this.flyCameraTo(
-      new THREE.Vector3(0, 160, 240),
-      new THREE.Vector3(0, 0, 0)
-    );
+    if (this.mode === 'lineup') {
+      this.flyCameraTo(
+        new THREE.Vector3(-10, 4, 195),
+        new THREE.Vector3(-10, 0, 0)
+      );
+    } else {
+      this.flyCameraTo(
+        new THREE.Vector3(0, 160, 240),
+        new THREE.Vector3(0, 0, 0)
+      );
+    }
 
     if (this.onPlanetSelect) {
       this.onPlanetSelect(null);
@@ -459,29 +515,57 @@ export class SolarSystemEngine {
 
     const delta = 0.016;
 
-    // Időszimuláció és keringés
+    // Időszimuláció és mozgás
     if (!this.isPaused) {
       this.time += delta * this.simSpeed;
 
-      this.planets.forEach((p) => {
-        // Saját tengely körüli forgás
-        p.mesh.rotation.y += p.data.rotationSpeed * this.simSpeed;
+      if (this.mode === 'lineup') {
+        // --- MÉRETARÁNY SORBARENDEZÉS MÓD ---
+        this.planets.forEach((p) => {
+          // Tengely körüli forgás folytatódik
+          p.mesh.rotation.y += p.data.rotationSpeed * this.simSpeed;
 
-        // Pályán való keringés (Nap nem mozog)
-        if (p.data.orbitRadius3D > 0) {
-          p.angle += p.data.orbitSpeed * 0.4 * this.simSpeed * delta;
-          p.mesh.position.x = Math.cos(p.angle) * p.data.orbitRadius3D;
-          p.mesh.position.z = Math.sin(p.angle) * p.data.orbitRadius3D;
+          // Sima átmozgatás az egyenes sorba
+          const targetX = this.lineupPositions[p.data.id] ?? 0;
+          p.mesh.position.lerp(new THREE.Vector3(targetX, 0, 0), 0.06);
 
-          // Hold forgatása a Föld körül
-          if (p.mesh.userData.moon) {
-            const moon = p.mesh.userData.moon;
-            const moonAngle = this.time * 2;
-            moon.position.x = Math.cos(moonAngle) * 6;
-            moon.position.z = Math.sin(moonAngle) * 6;
+          // Szaturnusz dőlése szemből látványos
+          if (p.data.id === 'saturn') {
+            p.mesh.rotation.x = THREE.MathUtils.lerp(p.mesh.rotation.x, 0.4, 0.05);
           }
-        }
-      });
+
+          if (p.mesh.userData.moon) {
+            p.mesh.userData.moon.position.set(0, 4.8, 0);
+          }
+        });
+
+      } else {
+        // --- 3D KERINGÉSI PÁLYA MÓD ---
+        this.planets.forEach((p) => {
+          // Saját tengely körüli forgás
+          p.mesh.rotation.y += p.data.rotationSpeed * this.simSpeed;
+
+          // Pályán való keringés (Nap a helyén marad)
+          if (p.data.orbitRadius3D > 0) {
+            // Látványos, azonnal érzékelhető keringési sebesség
+            p.angle += p.data.orbitSpeed * 18.0 * this.simSpeed * delta;
+            const targetX = Math.cos(p.angle) * p.data.orbitRadius3D;
+            const targetZ = Math.sin(p.angle) * p.data.orbitRadius3D;
+            p.mesh.position.lerp(new THREE.Vector3(targetX, 0, targetZ), 0.08);
+
+            // Hold forgatása a Föld körül
+            if (p.mesh.userData.moon) {
+              const moon = p.mesh.userData.moon;
+              const moonAngle = this.time * 3.5;
+              moon.position.x = Math.cos(moonAngle) * 5.5;
+              moon.position.z = Math.sin(moonAngle) * 5.5;
+            }
+          } else {
+            // Nap visszatér a (0,0,0) pontra
+            p.mesh.position.lerp(new THREE.Vector3(0, 0, 0), 0.08);
+          }
+        });
+      }
     }
 
     // Kamera interpoláció (Smooth fly-to)
@@ -498,17 +582,17 @@ export class SolarSystemEngine {
 
       this.camera.position.lerpVectors(this.startCamPos, this.cameraTarget.position, ease);
       this.controls.target.lerpVectors(this.startCamLookAt, this.cameraTarget.lookAt, ease);
-    } else if (this.isTracking && this.focusedPlanet) {
-      // Követjük a bolygót, ahogy kering
+    } else if (this.isTracking && this.focusedPlanet && this.mode === 'orbit') {
+      // Követjük a bolygót a pályáján
       const targetPos = this.focusedPlanet.mesh.position;
       const deltaPos = targetPos.clone().sub(this.controls.target);
       this.controls.target.copy(targetPos);
       this.camera.position.add(deltaPos);
     }
 
-    // Csillagháttér finom forgatása a mélységérzetért
+    // Csillagháttér finom forgatása
     if (this.starfield) {
-      this.starfield.rotation.y += 0.0001;
+      this.starfield.rotation.y += 0.00015;
     }
 
     this.controls.update();

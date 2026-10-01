@@ -15,7 +15,7 @@ export class UIManager {
     this.ambientNodes = null;
 
     this.cacheElements();
-    this.buildPlanetDock();
+    this.buildPlanetList();
     this.setupEventListeners();
     this.setupAudio();
   }
@@ -23,7 +23,11 @@ export class UIManager {
   cacheElements() {
     this.infoDrawer = document.getElementById('infoDrawer');
     this.hoverTooltip = document.getElementById('hoverTooltip');
-    this.planetDock = document.getElementById('planetDock');
+    this.planetSidebar = document.getElementById('planetSidebar');
+    this.planetList = document.getElementById('planetList');
+    this.btnToggleSidebar = document.getElementById('btnToggleSidebar');
+    this.btnModeOrbit = document.getElementById('btnModeOrbit');
+    this.btnModeLineup = document.getElementById('btnModeLineup');
     this.btnResetView = document.getElementById('btnResetView');
     this.btnPlayPause = document.getElementById('btnPlayPause');
     this.speedButtons = document.querySelectorAll('.speed-btn');
@@ -33,28 +37,59 @@ export class UIManager {
     this.btnCloseHelp = document.getElementById('btnCloseHelp');
   }
 
-  buildPlanetDock() {
-    this.planetDock.innerHTML = '';
+  buildPlanetList() {
+    if (!this.planetList) return;
+    this.planetList.innerHTML = '';
     solarSystemData.forEach((planet) => {
       const btn = document.createElement('button');
-      btn.className = 'dock-item';
+      btn.className = 'planet-list-item';
       btn.dataset.id = planet.id;
       btn.setAttribute('aria-label', planet.name);
 
+      const shortType = planet.type.split(' ')[0];
+
       btn.innerHTML = `
-        <span class="dock-dot" style="background-color: ${planet.color}; box-shadow: 0 0 10px ${planet.glowColor}"></span>
-        <span class="dock-name">${planet.name}</span>
+        <span class="item-dot" style="background-color: ${planet.color}; box-shadow: 0 0 10px ${planet.glowColor}"></span>
+        <div class="item-text">
+          <div class="item-name">${planet.name}</div>
+          <div class="item-sub">${shortType}</div>
+        </div>
+        <div class="item-metric">${planet.distanceFromSunKm !== '0 km' ? planet.distanceFromSunAU : 'Centrum'}</div>
       `;
 
       btn.addEventListener('click', () => {
         this.engine.selectPlanet(planet.id);
       });
 
-      this.planetDock.appendChild(btn);
+      this.planetList.appendChild(btn);
     });
   }
 
   setupEventListeners() {
+    // Bal oldali égitest sáv összecsukása / kinyitása
+    if (this.btnToggleSidebar && this.planetSidebar) {
+      this.btnToggleSidebar.addEventListener('click', () => {
+        const isCollapsed = this.planetSidebar.classList.toggle('collapsed');
+        this.btnToggleSidebar.innerHTML = isCollapsed ? '▶' : '◀';
+        this.btnToggleSidebar.setAttribute('title', isCollapsed ? 'Égitest lista megjelenítése' : 'Égitest lista elrejtése');
+      });
+    }
+
+    // Módváltó gombok (Pályák vs Méretarány)
+    if (this.btnModeOrbit && this.btnModeLineup) {
+      this.btnModeOrbit.addEventListener('click', () => {
+        this.btnModeOrbit.classList.add('active');
+        this.btnModeLineup.classList.remove('active');
+        this.engine.setMode('orbit');
+      });
+
+      this.btnModeLineup.addEventListener('click', () => {
+        this.btnModeLineup.classList.add('active');
+        this.btnModeOrbit.classList.remove('active');
+        this.engine.setMode('lineup');
+      });
+    }
+
     // Info panel bezárása
     const btnCloseDrawer = document.getElementById('btnCloseDrawer');
     if (btnCloseDrawer) {
@@ -131,8 +166,8 @@ export class UIManager {
       return;
     }
 
-    // Alsó dokk aktív gombjának frissítése
-    document.querySelectorAll('.dock-item').forEach(btn => {
+    // Bal oldali lista aktív elemének frissítése
+    document.querySelectorAll('.planet-list-item').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.id === planet.id);
     });
 
@@ -196,7 +231,7 @@ export class UIManager {
   hidePlanetInfo() {
     this.currentPlanet = null;
     this.infoDrawer.classList.remove('open');
-    document.querySelectorAll('.dock-item').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.planet-list-item').forEach(btn => btn.classList.remove('active'));
   }
 
   updateHoverTooltip(planet) {

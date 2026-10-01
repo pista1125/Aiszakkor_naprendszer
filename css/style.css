@@ -129,7 +129,7 @@ html, body {
   gap: 4px;
 }
 
-.btn-icon, .speed-btn {
+.btn-icon, .speed-btn, .mode-btn {
   background: transparent;
   border: none;
   color: var(--text-secondary);
@@ -142,14 +142,15 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 4px;
 }
 
-.btn-icon:hover, .speed-btn:hover {
+.btn-icon:hover, .speed-btn:hover, .mode-btn:hover {
   color: #fff;
   background: rgba(255, 255, 255, 0.1);
 }
 
-.btn-icon.active, .speed-btn.active {
+.btn-icon.active, .speed-btn.active, .mode-btn.active {
   color: #fff;
   background: rgba(56, 189, 248, 0.25);
   border: 1px solid rgba(56, 189, 248, 0.4);
@@ -434,81 +435,156 @@ html, body {
 }
 
 /* ==========================================================================
-   ALSÓ BOLYGÓ-GYORSVÁLASZTÓ DOCK
+   BAL OLDALI KINYITHATÓ ÉGITEST LISTA (PLANET SIDEBAR)
    ========================================================================== */
-.bottom-dock-wrapper {
+.planet-sidebar {
   position: absolute;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  pointer-events: auto;
-  max-width: calc(100vw - 32px);
-  overflow-x: auto;
-  padding: 4px 6px;
-  scrollbar-width: none;
+  top: 86px;
+  left: 24px;
+  bottom: 24px;
+  width: 250px;
+  background: rgba(10, 16, 32, 0.85);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+  z-index: 15;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  overflow: visible;
 }
 
-.bottom-dock-wrapper::-webkit-scrollbar {
-  display: none;
+.planet-sidebar.collapsed {
+  transform: translateX(-212px);
 }
 
-.dock-container {
+.sidebar-header {
+  padding: 14px 16px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: var(--bg-card);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--border-glass);
-  box-shadow: var(--glass-shadow);
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.dock-item {
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-secondary);
-  font-family: var(--font-main);
-  font-size: 0.82rem;
-  font-weight: 500;
-  padding: 8px 14px;
-  border-radius: 999px;
-  cursor: pointer;
+.sidebar-title-box {
   display: flex;
   align-items: center;
   gap: 8px;
-  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.sidebar-toggle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
   transition: var(--transition-smooth);
 }
 
-.dock-dot {
-  width: 9px;
-  height: 9px;
+.sidebar-toggle:hover {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: var(--text-accent);
+  color: #fff;
+}
+
+.planet-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.planet-list::-webkit-scrollbar {
+  width: 4px;
+}
+.planet-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+.planet-list-item {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: var(--transition-smooth);
+  color: var(--text-secondary);
+}
+
+.planet-list-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transform: translateX(3px);
+}
+
+.planet-list-item.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+}
+
+.item-dot {
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  display: inline-block;
+  flex-shrink: 0;
   transition: transform 0.3s ease;
 }
 
-.dock-item:hover {
+.planet-list-item:hover .item-dot,
+.planet-list-item.active .item-dot {
+  transform: scale(1.3);
+}
+
+.item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-name {
+  font-size: 0.88rem;
+  font-weight: 600;
   color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dock-item:hover .dock-dot {
-  transform: scale(1.4);
+.item-sub {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
-.dock-item.active {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: #fff;
-  box-shadow: 0 0 14px rgba(255, 255, 255, 0.15);
-}
-
-.dock-item.active .dock-dot {
-  transform: scale(1.4);
+.item-metric {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-accent);
+  white-space: nowrap;
 }
 
 /* ==========================================================================
@@ -698,17 +774,15 @@ html, body {
     bottom: 0;
   }
 
-  .bottom-dock-wrapper {
+  .planet-sidebar {
+    top: 70px;
+    left: 10px;
+    width: 220px;
     bottom: 12px;
   }
 
-  .dock-container {
-    padding: 6px 8px;
-  }
-
-  .dock-item {
-    padding: 6px 10px;
-    font-size: 0.75rem;
+  .planet-sidebar.collapsed {
+    transform: translateX(-182px);
   }
 
   .help-modal {
