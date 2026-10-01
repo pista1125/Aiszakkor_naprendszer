@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Naprendszer Felfedező | Interaktív 3D Csillagászati Weboldal</title>
+  <meta name="description" content="Fedezd fel a Naprendszer bolygóit interaktív 3D térben! Részletes adatok az átmérőről, Naptól mért távolságról és lenyűgöző csillagászati érdekességekről.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪐</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Three.js és OrbitControls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+
+  <!-- 3D WebGL Canvas tároló -->
+  <div id="webgl-container"></div>
+
+  <!-- Fejléc / Top HUD -->
+  <header class="top-hud">
+    <div class="brand-wrapper">
+      <div class="brand-logo">🪐</div>
+      <div class="brand-text">
+        <h1>Naprendszer Felfedező</h1>
+        <span>Interaktív 3D Szimuláció</span>
+      </div>
+    </div>
+
+    <div class="hud-controls">
+      <!-- Szimuláció vezérlés -->
+      <div class="hud-group">
+        <button id="btnPlayPause" class="btn-icon active" title="Szimuláció megállítása">⏸️</button>
+        <button class="speed-btn" data-speed="0.5">0.5×</button>
+        <button class="speed-btn active" data-speed="1">1×</button>
+        <button class="speed-btn" data-speed="2">2×</button>
+        <button class="speed-btn" data-speed="5">5×</button>
+      </div>
+
+      <!-- Hangulat & Súgó gombok -->
+      <div class="hud-group">
+        <button id="btnSound" class="btn-icon" title="Kozmikus térhangzás">🔇</button>
+        <button id="btnHelp" class="btn-icon" title="Navigációs útmutató">❓</button>
+      </div>
+
+      <!-- Teljes nézet gomb -->
+      <button id="btnResetView" class="btn-glass">
+        <span>🌌</span>
+        <span>Teljes nézet</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Oldalsó Részletes Infopanel (Drawer) -->
+  <aside id="infoDrawer" class="info-drawer" aria-label="Bolygó információk">
+    <!-- Fejléc -->
+    <div class="drawer-header">
+      <div>
+        <div class="badge-wrapper">
+          <span id="drawerBadge" class="planet-badge">Kőzetbolygó</span>
+        </div>
+        <div class="drawer-title-group">
+          <h2 id="drawerTitle">Föld</h2>
+          <span id="drawerSubtitle" class="latin-name">Terra</span>
+        </div>
+      </div>
+      <button id="btnCloseDrawer" class="btn-close" aria-label="Panel bezárása" title="Bezárás (ESC)">✕</button>
+    </div>
+
+    <!-- Vizuális / 3D Mini Előnézet -->
+    <div class="visual-preview-box">
+      <canvas id="miniPlanetCanvas" width="280" height="280"></canvas>
+    </div>
+
+    <!-- Részletes tartalom -->
+    <div class="drawer-content">
+      <div id="drawerTagline" class="planet-tagline">
+        Kék oázis az űrben – az egyetlen ismert égitest élettel.
+      </div>
+
+      <!-- Fő Telemetriai Metrikák -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">📏 Átmérő</div>
+          <div id="statDiameter" class="metric-value">12 742 km</div>
+          <div id="statDiameterRatio" class="metric-sub">1,0× a Föld átmérője</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">☀️ Távolság a Naptól</div>
+          <div id="statDistance" class="metric-value">149,6 millió km</div>
+          <div id="statDistanceAU" class="metric-sub">1,000 CsE</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">⏱️ Keringési Idő</div>
+          <div id="statOrbit" class="metric-value">365,25 nap</div>
+          <div class="metric-sub">1 Földi év</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">🔄 Tengelyforgás</div>
+          <div id="statRotation" class="metric-value">23 óra 56 perc</div>
+          <div class="metric-sub">1 sziderikus nap</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">🌡️ Hőmérséklet</div>
+          <div id="statTemp" class="metric-value">+15 °C</div>
+          <div class="metric-sub">Felszíni átlag</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-label">🌕 Kísérők</div>
+          <div id="statMoons" class="metric-value">1 ismert hold</div>
+          <div class="metric-sub">Természetes holdak</div>
+        </div>
+      </div>
+
+      <!-- Leírás -->
+      <div class="section-block">
+        <h3>📖 Áttekintés</h3>
+        <p id="drawerDesc" class="overview-text"></p>
+      </div>
+
+      <!-- Érdekességek (Tudtad-e?) -->
+      <div class="section-block">
+        <h3>✨ Lenyűgöző Érdekességek</h3>
+        <div id="drawerFactsList" class="facts-list"></div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Alsó Bolygó-gyorsválasztó Dock -->
+  <nav class="bottom-dock-wrapper" aria-label="Bolygó választó">
+    <div id="planetDock" class="dock-container"></div>
+  </nav>
+
+  <!-- Lebegő Hover Tooltip -->
+  <div id="hoverTooltip" class="hover-tooltip"></div>
+
+  <!-- Navigációs Súgó Modál -->
+  <div id="helpModal" class="help-modal">
+    <div class="help-header">
+      <h4>🕹️ Navigáció & Útmutató</h4>
+      <button id="btnCloseHelp" class="help-close">✕</button>
+    </div>
+    <div class="help-banner-wrapper">
+      <img src="assets/solar_system_banner.jpg" alt="A Naprendszer bolygóinak áttekintése" class="help-banner-img">
+      <div class="help-banner-caption">A Nap és a bolygók sorrendje a Naptól távolodva</div>
+    </div>
+    <div class="help-list">
+      <div class="help-item">
+        <span class="help-icon">🖱️</span>
+        <div><strong>Forgatás:</strong> Bal egérgomb nyomva tartása és mozgatása (vagy érintés mobilon).</div>
+      </div>
+      <div class="help-item">
+        <span class="help-icon">🔍</span>
+        <div><strong>Zoom:</strong> Egérgörgő fel/le (vagy 2 ujjas csippentés).</div>
+      </div>
+      <div class="help-item">
+        <span class="help-icon">🎯</span>
+        <div><strong>Kiválasztás:</strong> Kattints bármelyik 3D bolygóra vagy az alsó sávra a telemetria megnyitásához.</div>
+      </div>
+      <div class="help-item">
+        <span class="help-icon">🌌</span>
+        <div><strong>Teljes nézet:</strong> Kattints a jobb felső "Teljes nézet" gombra vagy nyomj ESC-et.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fő belépési pont -->
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
