@@ -27,10 +27,28 @@ Egy lenyűgöző, interaktív 3D csillagászati bemutató weboldal a Naprendszer
 - **🎮 Interakciók és Vezérlés:**
   - **Forgatás:** Bal egérgomb nyomva tartása és mozgatása / érintés mobilon.
   - **Zoom:** Egérgörgő vagy 2 ujjas csippentés.
+  - **Bal oldali kinyitható égitest-panel:** Egy kattintással összecsukható (◀ / ▶) lebegő lista az összes égitesttel.
+  - **📏 Méretarány Összehasonlítás Mód:** A felső sávban átkapcsolható a keringési szimulációról a valós csillagászati méretarányos felsorakoztatásra (a Nap 109× méretével!).
   - **Hover Tooltip:** Az egér kurzor alatt megjelenő lebegő bolygócímke és távolság.
   - **Szimuláció vezérlés:** Lejátszás / Szünet (⏸️ / ▶️) és állítható sebesség (0.5×, 1×, 2×, 5×).
   - **Kozmikus térhangzás:** Bekapcsolható éteri sci-fi ambient zene Web Audio API-val (külső fájlok nélkül).
   - **Teljes nézet gomb (🌌) & ESC:** Visszaállítja a kamerát a Naprendszer teljes áttekintésére.
+
+---
+
+## 🌐 Telepítés GitHub Pages-re (GitHub Actions)
+
+A repó tartalmaz egy előre konfigurált munkafolyamatot a `.github/workflows/deploy.yml` fájlban.
+
+1. **GitHub Pages beállítása a repódban:**
+   - Nyisd meg a repót a GitHubon: `https://github.com/pista1125/Aiszakkor_naprendszer`
+   - Menj a **Settings** (Beállítások) ➔ **Pages** fülre.
+   - A **Build and deployment** résznél a **Source** legördülő menüben válaszd a **GitHub Actions** lehetőséget.
+2. **Kód feltöltése (Push):**
+   ```bash
+   git push -u origin main
+   ```
+3. A GitHub Action automatikusan lefut és közzéteszi a weboldalt a nyilvános GitHub Pages címen!
 
 ---
 
