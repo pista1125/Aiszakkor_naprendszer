@@ -25,18 +25,33 @@ export class SolarSystemEngine {
     this.time = 0;
     this.mode = 'orbit'; // 'orbit' vagy 'lineup'
 
-    // Méretarány / Felsorakoztatási pozíciók az X tengely mentén (Nap és 9 bolygó)
+    // Valódi csillagászati méretarány skálázási szorzók (a Föld átmérője = 109× kisebb a Napnál!)
+    // Föld cél-sugara = 1.30 egység
+    this.lineupScales = {
+      sun: 10.15,      // 14.0 * 10.15 = 142.1 sugár (~109.3× a Föld sugara!)
+      mercury: 0.278,  // 1.8 * 0.278 = 0.50 sugár (0.38× Föld)
+      venus: 0.386,    // 3.2 * 0.386 = 1.23 sugár (0.95× Föld)
+      earth: 0.382,    // 3.4 * 0.382 = 1.30 sugár (1.00× Föld bázis)
+      mars: 0.301,     // 2.3 * 0.301 = 0.69 sugár (0.53× Föld)
+      jupiter: 2.098,  // 6.8 * 2.098 = 14.26 sugár (10.97× Föld)
+      saturn: 2.122,   // 5.6 * 2.122 = 11.88 sugár (9.14× Föld)
+      uranus: 1.232,   // 4.2 * 1.232 = 5.18 sugár (3.98× Föld)
+      neptune: 1.256,  // 4.0 * 1.256 = 5.02 sugár (3.86× Föld)
+      pluto: 0.202     // 1.2 * 0.202 = 0.24 sugár (0.19× Föld)
+    };
+
+    // Pontos pozíciók az X tengely mentén a hatalmas Nap mellett
     this.lineupPositions = {
-      sun: -120,
-      mercury: -88,
-      venus: -74,
-      earth: -58,
-      mars: -44,
-      jupiter: -16,
-      saturn: 20,
-      uranus: 58,
-      neptune: 84,
-      pluto: 104
+      sun: -170,       // jobb széle: -170 + 142.1 = -27.9
+      mercury: -21,    // picurka pont a Nap pereme mellett
+      venus: -14,
+      earth: -6,
+      mars: 2,
+      jupiter: 30,     // gázóriás (sugár: 14.3)
+      saturn: 82,      // gyűrűkkel együtt (sugár: 11.9, gyűrű: 27.5)
+      uranus: 128,     // jégóriás (sugár: 5.2)
+      neptune: 147,    // jégóriás (sugár: 5.0)
+      pluto: 160       // törpebolygó (sugár: 0.24)
     };
 
     // Kamera célpontok az animációhoz
@@ -71,14 +86,16 @@ export class SolarSystemEngine {
     if (newMode === 'lineup') {
       // Pályavonalak elrejtése méretarány módban
       this.orbitLines.forEach(line => line.visible = false);
-      // Kamera sima átmozgatása panoráma szemből nézetbe
+      this.ambientLight.intensity = 1.3;
+      // Kamera átmozgatása panoráma szemből nézetbe (úgy, hogy a hatalmas Nap és a bolygók is látszódjanak)
       this.flyCameraTo(
-        new THREE.Vector3(-10, 4, 195),
-        new THREE.Vector3(-10, 0, 0)
+        new THREE.Vector3(25, 2, 280),
+        new THREE.Vector3(25, 0, 0)
       );
     } else {
       // Keringési pályák visszakapcsolása
       this.orbitLines.forEach(line => line.visible = true);
+      this.ambientLight.intensity = 0.7;
       // Kamera visszamozgatása 3D perspektíva nézetbe
       this.flyCameraTo(
         new THREE.Vector3(0, 160, 240),
@@ -429,19 +446,22 @@ export class SolarSystemEngine {
     this.focusedPlanet = target;
     this.isTracking = (this.mode === 'orbit' && target.data.id !== 'sun');
 
-    // Kiszámítjuk az ideális kameratávolságot a bolygó méretéből
+    // Kiszámítjuk az ideális kameratávolságot a bolygó aktuális méretéből
+    const currentScale = this.mode === 'lineup' ? (this.lineupScales[target.data.id] || 1.0) : 1.0;
+    const effectiveSize = target.data.size3D * currentScale;
+
     const distanceOffset = target.data.id === 'sun'
-      ? target.data.size3D * 3.8
+      ? effectiveSize * (this.mode === 'lineup' ? 2.5 : 3.8)
       : target.data.hasRings
-        ? target.data.ringOuterRadius * 2.2
-        : target.data.size3D * 4.2;
+        ? (target.data.ringOuterRadius * currentScale) * 2.2
+        : Math.max(effectiveSize * (this.mode === 'lineup' ? 4.5 : 4.2), 6.5);
 
     const targetPos = target.mesh.position.clone();
     
     // Kamera pozíciója a mód függvényében
     let camOffset;
     if (this.mode === 'lineup') {
-      camOffset = new THREE.Vector3(0, distanceOffset * 0.2, distanceOffset * 1.1);
+      camOffset = new THREE.Vector3(0, distanceOffset * 0.15, distanceOffset * 1.05);
     } else {
       camOffset = new THREE.Vector3(
         distanceOffset * 0.7,
@@ -466,8 +486,8 @@ export class SolarSystemEngine {
 
     if (this.mode === 'lineup') {
       this.flyCameraTo(
-        new THREE.Vector3(-10, 4, 195),
-        new THREE.Vector3(-10, 0, 0)
+        new THREE.Vector3(25, 2, 280),
+        new THREE.Vector3(25, 0, 0)
       );
     } else {
       this.flyCameraTo(
@@ -520,10 +540,14 @@ export class SolarSystemEngine {
       this.time += delta * this.simSpeed;
 
       if (this.mode === 'lineup') {
-        // --- MÉRETARÁNY SORBARENDEZÉS MÓD ---
+        // --- VALÓDI CSILLAGÁSZATI MÉRETARÁNY SORBARENDEZÉS MÓD ---
         this.planets.forEach((p) => {
           // Tengely körüli forgás folytatódik
           p.mesh.rotation.y += p.data.rotationSpeed * this.simSpeed;
+
+          // Valódi méretarány szerinti dinamikus skálázás folyamatos lerp-pel
+          const s = this.lineupScales[p.data.id] || 1.0;
+          p.mesh.scale.lerp(new THREE.Vector3(s, s, s), 0.08);
 
           // Sima átmozgatás az egyenes sorba
           const targetX = this.lineupPositions[p.data.id] ?? 0;
@@ -535,13 +559,23 @@ export class SolarSystemEngine {
           }
 
           if (p.mesh.userData.moon) {
-            p.mesh.userData.moon.position.set(0, 4.8, 0);
+            p.mesh.userData.moon.scale.set(0.27, 0.27, 0.27);
+            p.mesh.userData.moon.position.set(0, 3.2, 0);
           }
         });
+
+        // Fényforrás követi a Napot
+        const sun = this.planets.find(p => p.data.id === 'sun');
+        if (sun) {
+          this.sunLight.position.copy(sun.mesh.position);
+        }
 
       } else {
         // --- 3D KERINGÉSI PÁLYA MÓD ---
         this.planets.forEach((p) => {
+          // Visszaskálázás az alapértelmezett (1,1,1) látványos pályaméretre
+          p.mesh.scale.lerp(new THREE.Vector3(1, 1, 1), 0.08);
+
           // Saját tengely körüli forgás
           p.mesh.rotation.y += p.data.rotationSpeed * this.simSpeed;
 
@@ -556,6 +590,7 @@ export class SolarSystemEngine {
             // Hold forgatása a Föld körül
             if (p.mesh.userData.moon) {
               const moon = p.mesh.userData.moon;
+              moon.scale.set(1, 1, 1);
               const moonAngle = this.time * 3.5;
               moon.position.x = Math.cos(moonAngle) * 5.5;
               moon.position.z = Math.sin(moonAngle) * 5.5;
@@ -565,6 +600,9 @@ export class SolarSystemEngine {
             p.mesh.position.lerp(new THREE.Vector3(0, 0, 0), 0.08);
           }
         });
+
+        // Fényforrás vissza a centrumba
+        this.sunLight.position.set(0, 0, 0);
       }
     }
 

@@ -35,6 +35,7 @@ export class UIManager {
     this.helpModal = document.getElementById('helpModal');
     this.btnHelp = document.getElementById('btnHelp');
     this.btnCloseHelp = document.getElementById('btnCloseHelp');
+    this.lineupBanner = document.getElementById('lineupBanner');
   }
 
   buildPlanetList() {
@@ -80,12 +81,14 @@ export class UIManager {
       this.btnModeOrbit.addEventListener('click', () => {
         this.btnModeOrbit.classList.add('active');
         this.btnModeLineup.classList.remove('active');
+        if (this.lineupBanner) this.lineupBanner.classList.remove('visible');
         this.engine.setMode('orbit');
       });
 
       this.btnModeLineup.addEventListener('click', () => {
         this.btnModeLineup.classList.add('active');
         this.btnModeOrbit.classList.remove('active');
+        if (this.lineupBanner) this.lineupBanner.classList.add('visible');
         this.engine.setMode('lineup');
       });
     }
