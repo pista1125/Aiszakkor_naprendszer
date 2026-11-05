@@ -110,13 +110,12 @@ export class SolarSystemEngine {
 
   initScene() {
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x050711, 0.0012);
 
     this.camera = new THREE.PerspectiveCamera(
       45,
       this.container.clientWidth / this.container.clientHeight,
-      0.1,
-      2500
+      0.5,
+      6000
     );
     this.camera.position.copy(this.cameraTarget.position);
 
@@ -154,21 +153,146 @@ export class SolarSystemEngine {
   }
 
   initStarfield() {
-    const starCount = 3500;
+    this.starGroup = new THREE.Group();
+    this.starfield = this.starGroup;
+
+    // 1. Procedurális csillag és köd textúrák generálása Canvas segítségével
+    const starTexture = this.createStarTexture();
+    const flareStarTexture = this.createFlareStarTexture();
+    const nebulaCloudTexture = this.createNebulaCloudTexture();
+
+    // 2. Sűrű, távoli csillagpor (10 000 csillag valós csillagászati színosztályokkal)
+    this.buildDistantStars(starTexture);
+
+    // 3. Valós idejű pislákoló csillagok (GPU shader animációval)
+    this.buildTwinklingStars(starTexture);
+
+    // 4. Kiemelkedő fényes főcsillagok kereszttüskés diffrakciós ragyogással (Hubble/JWST stílus)
+    this.buildMajorStars(flareStarTexture);
+
+    // 5. A Tejút galaktikus sávja (4 500 részecske a döntött galaktikus síkban)
+    this.buildMilkyWay(starTexture);
+
+    // 6. Eterikus, színes mélyűri gázködök (Orion és Cygnus köd komplexumok)
+    this.buildNebulae(nebulaCloudTexture);
+
+    // 7. Hullócsillag (meteor) rendszer előkészítése
+    this.initMeteors();
+
+    this.scene.add(this.starGroup);
+  }
+
+  createStarTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.18, 'rgba(255, 255, 255, 0.9)');
+    grad.addColorStop(0.45, 'rgba(230, 240, 255, 0.4)');
+    grad.addColorStop(0.75, 'rgba(200, 225, 255, 0.08)');
+    grad.addColorStop(1, 'rgba(200, 220, 255, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  createFlareStarTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const cx = 64, cy = 64;
+
+    // Központi ragyogó fényudvar
+    const haloGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 56);
+    haloGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    haloGrad.addColorStop(0.15, 'rgba(240, 248, 255, 0.9)');
+    haloGrad.addColorStop(0.4, 'rgba(180, 215, 255, 0.3)');
+    haloGrad.addColorStop(0.8, 'rgba(150, 190, 255, 0.06)');
+    haloGrad.addColorStop(1, 'rgba(150, 190, 255, 0)');
+    ctx.fillStyle = haloGrad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    // Fő vízszintes kereszttüske
+    const spikeH = ctx.createLinearGradient(0, cy, 128, cy);
+    spikeH.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    spikeH.addColorStop(0.35, 'rgba(255, 255, 255, 0.25)');
+    spikeH.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+    spikeH.addColorStop(0.65, 'rgba(255, 255, 255, 0.25)');
+    spikeH.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = spikeH;
+    ctx.fillRect(0, cy - 1.5, 128, 3);
+
+    // Fő függőleges kereszttüske
+    const spikeV = ctx.createLinearGradient(cx, 0, cx, 128);
+    spikeV.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    spikeV.addColorStop(0.35, 'rgba(255, 255, 255, 0.25)');
+    spikeV.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+    spikeV.addColorStop(0.65, 'rgba(255, 255, 255, 0.25)');
+    spikeV.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = spikeV;
+    ctx.fillRect(cx - 1.5, 0, 3, 128);
+
+    // Finom átlós diffrakciós sugarak
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(Math.PI / 4);
+    const diag = ctx.createLinearGradient(-45, 0, 45, 0);
+    diag.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    diag.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
+    diag.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = diag;
+    ctx.fillRect(-45, -0.75, 90, 1.5);
+    ctx.restore();
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  createNebulaCloudTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    const cx = 64, cy = 64;
+
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 64);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+    grad.addColorStop(0.25, 'rgba(255, 255, 255, 0.4)');
+    grad.addColorStop(0.55, 'rgba(255, 255, 255, 0.14)');
+    grad.addColorStop(0.85, 'rgba(255, 255, 255, 0.03)');
+    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  buildDistantStars(texture) {
+    const starCount = 10000;
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
 
-    const colorPalette = [
-      new THREE.Color(0xffffff),
-      new THREE.Color(0xb5d4ff),
-      new THREE.Color(0xfff4db),
-      new THREE.Color(0xd6e5ff),
-      new THREE.Color(0xffd5b3)
+    // Valós csillagászati színpaletta (O, B, A, F, G, K, M színképosztályok)
+    const palette = [
+      new THREE.Color(0xaec9ff), // Kékesfehér O/B
+      new THREE.Color(0xcad7ff),
+      new THREE.Color(0xffffff), // Tiszta fehér A
+      new THREE.Color(0xf6f8ff),
+      new THREE.Color(0xfff3e0), // Meleg fehér Nap-szerű F/G
+      new THREE.Color(0xffe8cc),
+      new THREE.Color(0xffd1a4), // Aranyló narancs K
+      new THREE.Color(0xff9d7a)  // Vörös óriás M
     ];
 
     for (let i = 0; i < starCount; i++) {
-      const radius = 600 + Math.random() * 800;
+      const radius = 1200 + Math.random() * 1400;
       const theta = Math.random() * Math.PI * 2;
       const phi = Math.acos((Math.random() * 2) - 1);
 
@@ -176,40 +300,459 @@ export class SolarSystemEngine {
       positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
       positions[i * 3 + 2] = radius * Math.cos(phi);
 
-      const pickedColor = colorPalette[Math.floor(Math.random() * colorPalette.length)];
-      colors[i * 3] = pickedColor.r;
-      colors[i * 3 + 1] = pickedColor.g;
-      colors[i * 3 + 2] = pickedColor.b;
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      const lum = 0.55 + Math.random() * 0.45;
+      colors[i * 3] = color.r * lum;
+      colors[i * 3 + 1] = color.g * lum;
+      colors[i * 3 + 2] = color.b * lum;
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    // Csillag textúra pötty
-    const canvas = document.createElement('canvas');
-    canvas.width = 16;
-    canvas.height = 16;
-    const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.4, 'rgba(255,255,255,0.7)');
-    grad.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 16, 16);
-    const starTexture = new THREE.CanvasTexture(canvas);
-
     const material = new THREE.PointsMaterial({
-      size: 2.8,
+      size: 2.4,
       vertexColors: true,
-      map: starTexture,
+      map: texture,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
-      depthWrite: false
+      depthWrite: false,
+      fog: false
     });
 
-    this.starfield = new THREE.Points(geometry, material);
-    this.scene.add(this.starfield);
+    const points = new THREE.Points(geometry, material);
+    this.starGroup.add(points);
+  }
+
+  buildTwinklingStars(texture) {
+    const starCount = 1500;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(starCount * 3);
+    const colors = new Float32Array(starCount * 3);
+    const sizes = new Float32Array(starCount);
+    const speeds = new Float32Array(starCount);
+    const phases = new Float32Array(starCount);
+
+    const palette = [
+      new THREE.Color(0xa8c5ff),
+      new THREE.Color(0xdbe6ff),
+      new THREE.Color(0xffffff),
+      new THREE.Color(0xffeed6),
+      new THREE.Color(0xffcca0),
+      new THREE.Color(0x93c5fd)
+    ];
+
+    for (let i = 0; i < starCount; i++) {
+      const radius = 1000 + Math.random() * 1300;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = radius * Math.cos(phi);
+
+      const c = palette[Math.floor(Math.random() * palette.length)];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+
+      sizes[i] = 3.2 + Math.random() * 3.6;
+      speeds[i] = 1.2 + Math.random() * 4.0;
+      phases[i] = Math.random() * Math.PI * 2;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    geometry.setAttribute('aTwinkleSpeed', new THREE.BufferAttribute(speeds, 1));
+    geometry.setAttribute('aTwinklePhase', new THREE.BufferAttribute(phases, 1));
+
+    this.twinkleMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uTexture: { value: texture }
+      },
+      vertexShader: `
+        attribute float aSize;
+        attribute float aTwinkleSpeed;
+        attribute float aTwinklePhase;
+        varying vec3 vColor;
+        varying float vAlpha;
+        uniform float uTime;
+        void main() {
+          vColor = color;
+          float twinkle = 0.35 + 0.65 * sin(uTime * aTwinkleSpeed + aTwinklePhase);
+          vAlpha = twinkle;
+          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = aSize * (480.0 / -mvPosition.z) * (0.75 + 0.35 * twinkle);
+          gl_Position = projectionMatrix * mvPosition;
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uTexture;
+        varying vec3 vColor;
+        varying float vAlpha;
+        void main() {
+          vec4 tex = texture2D(uTexture, gl_PointCoord);
+          gl_FragColor = vec4(vColor * tex.rgb, tex.a * vAlpha);
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+
+    const points = new THREE.Points(geometry, this.twinkleMaterial);
+    this.starGroup.add(points);
+  }
+
+  buildMajorStars(texture) {
+    const starCount = 420;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(starCount * 3);
+    const colors = new Float32Array(starCount * 3);
+
+    const brightPalette = [
+      new THREE.Color(0x9bc2ff), // Rigel / Vega kékes ragyogás
+      new THREE.Color(0xffffff), // Sirius ragyogó fehér
+      new THREE.Color(0xffeedb), // Capella aranyfehér
+      new THREE.Color(0xffba77), // Betelgeuse narancssárga óriás
+      new THREE.Color(0x7dd3fc)  // Halvány ciánkék csillag
+    ];
+
+    for (let i = 0; i < starCount; i++) {
+      const radius = 950 + Math.random() * 1150;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+
+      positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+      positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+      positions[i * 3 + 2] = radius * Math.cos(phi);
+
+      const c = brightPalette[Math.floor(Math.random() * brightPalette.length)];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 9.5,
+      vertexColors: true,
+      map: texture,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+
+    const points = new THREE.Points(geometry, material);
+    this.starGroup.add(points);
+  }
+
+  buildMilkyWay(texture) {
+    const count = 4500;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+
+    // Galaktikus sík orientációja (~58 fok döntés az ekliptikához képest)
+    const tiltX = THREE.MathUtils.degToRad(58);
+    const tiltZ = THREE.MathUtils.degToRad(25);
+    const cosX = Math.cos(tiltX), sinX = Math.sin(tiltX);
+    const cosZ = Math.cos(tiltZ), sinZ = Math.sin(tiltZ);
+
+    const mwPalette = [
+      new THREE.Color(0x60a5fa), // Galaktikus kék
+      new THREE.Color(0x818cf8), // Ibolyakék
+      new THREE.Color(0xc084fc), // Finom lila
+      new THREE.Color(0xe879f9), // Magenta csillagpor
+      new THREE.Color(0xfde047), // Galaktikus magfény
+      new THREE.Color(0xffffff)
+    ];
+
+    for (let i = 0; i < count; i++) {
+      const radius = 1300 + Math.random() * 850;
+      const theta = Math.random() * Math.PI * 2;
+
+      // Normáleloszlás: a galaktikus sík mentén sűrűbb, távolodva ritkul
+      const u1 = Math.random(), u2 = Math.random();
+      const randNormal = Math.sqrt(-2.0 * Math.log(u1 || 0.0001)) * Math.cos(2.0 * Math.PI * u2);
+      const lat = randNormal * 0.13; // Galaktikus szélesség
+
+      // Alap galaktikus koordináták
+      let x = radius * Math.cos(lat) * Math.cos(theta);
+      let y = radius * Math.sin(lat);
+      let z = radius * Math.cos(lat) * Math.sin(theta);
+
+      // Galaktikus mag sűrűsödés
+      const isCore = Math.abs(Math.sin(theta * 0.5)) < 0.28;
+
+      // Elforgatás az ekliptikai koordinátarendszerbe
+      const x1 = x * cosZ - y * sinZ;
+      const y1 = x * sinZ + y * cosZ;
+      const z1 = z;
+
+      const y2 = y1 * cosX - z1 * sinX;
+      const z2 = y1 * sinX + z1 * cosX;
+
+      positions[i * 3] = x1;
+      positions[i * 3 + 1] = y2;
+      positions[i * 3 + 2] = z2;
+
+      const baseCol = isCore
+        ? mwPalette[4 + Math.floor(Math.random() * 2)]
+        : mwPalette[Math.floor(Math.random() * (mwPalette.length - 2))];
+
+      const brightness = (0.45 + Math.random() * 0.55) * (isCore ? 1.3 : 0.85);
+      colors[i * 3] = Math.min(1.0, baseCol.r * brightness);
+      colors[i * 3 + 1] = Math.min(1.0, baseCol.g * brightness);
+      colors[i * 3 + 2] = Math.min(1.0, baseCol.b * brightness);
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 4.2,
+      vertexColors: true,
+      map: texture,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+
+    const points = new THREE.Points(geometry, material);
+    this.starGroup.add(points);
+  }
+
+  buildNebulae(texture) {
+    const count = 180;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+
+    // Három lélegzetelállító mélyűri gázköd klaszter
+    const clusters = [
+      {
+        center: new THREE.Vector3(1000, 420, -800),
+        color: new THREE.Color(0x9333ea), // Orion-típusú lila / magenta köd
+        spread: 320,
+        count: 70
+      },
+      {
+        center: new THREE.Vector3(-900, -380, 750),
+        color: new THREE.Color(0x06b6d4), // Cygnus / Fátyol-köd ciánkék
+        spread: 350,
+        count: 65
+      },
+      {
+        center: new THREE.Vector3(-450, 720, -1000),
+        color: new THREE.Color(0x3b82f6), // Kozmikus mélykék zafír köd
+        spread: 280,
+        count: 45
+      }
+    ];
+
+    let idx = 0;
+    clusters.forEach(cluster => {
+      for (let i = 0; i < cluster.count; i++) {
+        const offset = new THREE.Vector3(
+          (Math.random() - 0.5) * cluster.spread * 2,
+          (Math.random() - 0.5) * cluster.spread * 1.5,
+          (Math.random() - 0.5) * cluster.spread * 2
+        );
+        const pos = cluster.center.clone().add(offset);
+        positions[idx * 3] = pos.x;
+        positions[idx * 3 + 1] = pos.y;
+        positions[idx * 3 + 2] = pos.z;
+
+        const tint = cluster.color.clone();
+        tint.offsetHSL((Math.random() - 0.5) * 0.08, 0, (Math.random() - 0.5) * 0.15);
+
+        colors[idx * 3] = tint.r;
+        colors[idx * 3 + 1] = tint.g;
+        colors[idx * 3 + 2] = tint.b;
+        idx++;
+      }
+    });
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const material = new THREE.PointsMaterial({
+      size: 155.0,
+      vertexColors: true,
+      map: texture,
+      transparent: true,
+      opacity: 0.12,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+
+    const points = new THREE.Points(geometry, material);
+    this.starGroup.add(points);
+  }
+
+  initMeteors() {
+    this.meteors = [];
+    this.meteorCooldown = 2.5 + Math.random() * 3.0; // Időzítő az első hullócsillaghoz
+    this.meteorGroup = new THREE.Group();
+    this.starGroup.add(this.meteorGroup);
+
+    // Meteor pool: 2 újrahasznosítható vonal
+    for (let i = 0; i < 2; i++) {
+      const maxTrailPoints = 20;
+      const positions = new Float32Array(maxTrailPoints * 3);
+      const alphas = new Float32Array(maxTrailPoints);
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('aAlpha', new THREE.BufferAttribute(alphas, 1));
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color(0xd4f1f9) },
+          uOpacity: { value: 1.0 }
+        },
+        vertexShader: `
+          attribute float aAlpha;
+          varying float vAlpha;
+          void main() {
+            vAlpha = aAlpha;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          varying float vAlpha;
+          void main() {
+            gl_FragColor = vec4(uColor, vAlpha * uOpacity);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+        linewidth: 2
+      });
+
+      const line = new THREE.Line(geo, mat);
+      line.visible = false;
+      this.meteorGroup.add(line);
+
+      this.meteors.push({
+        line,
+        active: false,
+        pos: new THREE.Vector3(),
+        velocity: new THREE.Vector3(),
+        trail: [],
+        maxTrailPoints,
+        life: 0,
+        maxLife: 0.8
+      });
+    }
+  }
+
+  spawnMeteor() {
+    const meteor = this.meteors.find(m => !m.active);
+    if (!meteor) return;
+
+    // Véletlenszerű kezdőpont a kozmikus gömbön
+    const radius = 1100 + Math.random() * 300;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = 0.3 + Math.random() * 1.1;
+
+    meteor.pos.set(
+      radius * Math.sin(phi) * Math.cos(theta),
+      radius * Math.cos(phi),
+      radius * Math.sin(phi) * Math.sin(theta)
+    );
+
+    // Érintőleges sebességvektor átlósan lefelé
+    const tangent = new THREE.Vector3(
+      -Math.sin(theta) + (Math.random() - 0.5) * 0.4,
+      -0.6 - Math.random() * 0.4,
+      Math.cos(theta) + (Math.random() - 0.5) * 0.4
+    ).normalize();
+
+    const speed = 1300 + Math.random() * 600;
+    meteor.velocity.copy(tangent).multiplyScalar(speed);
+
+    meteor.trail = [meteor.pos.clone()];
+    meteor.life = 0;
+    meteor.maxLife = 0.65 + Math.random() * 0.35;
+    meteor.active = true;
+    meteor.line.visible = true;
+
+    // Jégkék vagy aranyló hullócsillag
+    const isGold = Math.random() > 0.65;
+    meteor.line.material.uniforms.uColor.value.set(isGold ? 0xfff0b8 : 0xccf2ff);
+  }
+
+  updateMeteors(delta) {
+    if (!this.meteors) return;
+
+    this.meteorCooldown -= delta;
+    if (this.meteorCooldown <= 0) {
+      this.spawnMeteor();
+      this.meteorCooldown = 3.5 + Math.random() * 4.5; // 3.5 - 8.0 mp múlva a következő
+    }
+
+    this.meteors.forEach(m => {
+      if (!m.active) return;
+
+      m.life += delta;
+      if (m.life >= m.maxLife) {
+        m.active = false;
+        m.line.visible = false;
+        return;
+      }
+
+      // Mozgatás
+      m.pos.addScaledVector(m.velocity, delta);
+
+      // Csóva / Trail pontok
+      m.trail.unshift(m.pos.clone());
+      if (m.trail.length > m.maxTrailPoints) {
+        m.trail.pop();
+      }
+
+      // Geometria frissítése
+      const posAttr = m.line.geometry.getAttribute('position');
+      const alphaAttr = m.line.geometry.getAttribute('aAlpha');
+
+      const progress = m.life / m.maxLife;
+      let globalOpacity = 1.0;
+      if (progress < 0.2) {
+        globalOpacity = progress / 0.2;
+      } else {
+        globalOpacity = 1.0 - (progress - 0.2) / 0.8;
+      }
+      m.line.material.uniforms.uOpacity.value = globalOpacity;
+
+      for (let i = 0; i < m.maxTrailPoints; i++) {
+        if (i < m.trail.length) {
+          posAttr.setXYZ(i, m.trail[i].x, m.trail[i].y, m.trail[i].z);
+          alphaAttr.setX(i, 1.0 - (i / m.maxTrailPoints));
+        } else {
+          posAttr.setXYZ(i, m.pos.x, m.pos.y, m.pos.z);
+          alphaAttr.setX(i, 0);
+        }
+      }
+
+      posAttr.needsUpdate = true;
+      alphaAttr.needsUpdate = true;
+    });
   }
 
   initCelestialBodies() {
@@ -822,9 +1365,23 @@ export class SolarSystemEngine {
       this.camera.position.add(deltaPos);
     }
 
-    // Csillagháttér finom forgatása
-    if (this.starfield) {
-      this.starfield.rotation.y += 0.00015;
+    // Kozmikus háttéridő frissítése (akkor is finoman pislákol, ha a szimuláció áll)
+    this.bgTime = (this.bgTime || 0) + delta;
+
+    // Csillagháttér fenséges, lassú forgatása
+    if (this.starGroup) {
+      this.starGroup.rotation.y += 0.00012;
+      this.starGroup.rotation.x += 0.00003;
+    }
+
+    // Pislákoló csillagok GPU animációja
+    if (this.twinkleMaterial) {
+      this.twinkleMaterial.uniforms.uTime.value = this.bgTime;
+    }
+
+    // Hullócsillagok (Meteors) léptetése
+    if (this.meteors) {
+      this.updateMeteors(delta);
     }
 
     this.controls.update();

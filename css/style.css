@@ -42,6 +42,10 @@ html, body {
   height: 100%;
   overflow: hidden;
   background-color: var(--bg-deep-space);
+  background-image: 
+    radial-gradient(ellipse 90% 60% at 50% -20%, rgba(30, 48, 90, 0.3), transparent 75%),
+    radial-gradient(ellipse 70% 50% at 85% 95%, rgba(42, 20, 75, 0.28), transparent 70%),
+    radial-gradient(circle at 50% 50%, #060a1a 0%, #030611 65%, #010206 100%);
   color: var(--text-primary);
   font-family: var(--font-main);
   user-select: none;
